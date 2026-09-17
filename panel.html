@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V.Canvas</title>
+<style>
+/* Theme tối, độc lập với theme của SillyTavern; Ngôn ngữ thiết kế giữ đồng nhất với bảng quản lý của V.Adapter. */
+:root{
+  --bg:#0f172a; --fg:hsl(210 20% 96%); --card:hsl(222 24% 12%);
+  --primary:#10b981; --primary-fg:#03110a; --muted:hsl(222 15% 20%);
+  --muted-fg:hsl(217 12% 62%); --border:hsl(222 14% 22%);
+  --success:#22c55e; --warning:hsl(38 92% 50%); --danger:hsl(0 72% 58%); --info:hsl(200 80% 55%);
+  --radius:.625rem;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{
+  background:
+    radial-gradient(60rem 30rem at 85% -10%, rgb(16 185 129 / .10), transparent 60%),
+    radial-gradient(50rem 26rem at -10% 110%, rgb(34 197 94 / .07), transparent 60%),
+    linear-gradient(180deg,#0f172a,#18181b);
+  color:var(--fg);font-size:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:hsl(222 12% 30% / .7);border-radius:999px}
+a{color:var(--primary)}
+.app-shell{display:flex;min-height:100vh}
+/* sidebar */
+.sidebar{width:250px;flex:none;display:flex;flex-direction:column;border-right:1px solid var(--border);background:hsl(222 24% 12% / .7);backdrop-filter:blur(16px);position:sticky;top:0;height:100vh}
+.sidebar-head{padding:22px 20px 18px;border-bottom:1px solid hsl(222 14% 22% / .6)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#10b981,#22c55e);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;box-shadow:0 8px 20px rgb(16 185 129 / .35);flex:none;font-family:ui-monospace,Consolas,monospace}
+.brand-name{font-size:16px;font-weight:700}
+.brand-sub{margin-top:8px;font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-fg)}
+.sidebar-nav{flex:1;padding:14px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.nav-btn{position:relative;width:100%;display:flex;align-items:center;gap:11px;padding:9px 12px;border:none;border-radius:8px;background:transparent;color:var(--muted-fg);font-size:13.5px;font-weight:500;cursor:pointer;text-align:left;font-family:inherit;transition:background .15s,color .15s}
+.nav-btn:hover{background:hsl(222 18% 17% / .7);color:var(--fg)}
+.nav-btn.active{background:hsl(152 65% 45% / .1);color:var(--fg)}
+.nav-btn.active:before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);height:20px;width:3px;border-radius:999px;background:var(--primary)}
+.sidebar-foot{padding:14px 16px;border-top:1px solid hsl(222 14% 22% / .6);display:flex;flex-direction:column;gap:10px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:var(--primary);background:hsl(160 84% 39% / .1);border:1px solid hsl(160 84% 39% / .2);padding:3px 9px;border-radius:999px}
+.pill.off{color:var(--danger);background:hsl(0 72% 58% / .1);border-color:hsl(0 72% 58% / .25)}
+.pill.warn{color:var(--warning);background:hsl(38 92% 50% / .1);border-color:hsl(38 92% 50% / .28)}
+.pdot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.foot-note{font-size:11px;color:var(--muted-fg);line-height:1.6}
+/* main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.content{max-width:1080px;width:100%;margin:0 auto;padding:26px 30px 56px}
+.topbar{display:none;height:56px;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border);background:hsl(222 24% 12% / .7);backdrop-filter:blur(16px)}
+.topbar .tb-title{font-size:14px;font-weight:600}
+.hamb{background:none;border:1px solid var(--border);border-radius:8px;color:var(--fg);padding:7px 10px;cursor:pointer;display:inline-flex;align-items:center}
+.mask-mobile{position:fixed;inset:0;background:rgb(0 0 0 / .5);z-index:80;display:none}
+.mask-mobile.show{display:block}
+.page{display:none;flex-direction:column;gap:18px}
+.page.active{display:flex}
+.page-head h1{font-size:24px;font-weight:700;letter-spacing:-.02em}
+.page-head p{margin-top:6px;font-size:13px;color:var(--muted-fg);line-height:1.6}
+.card{background:var(--card);border:1px solid var(--border);border-radius:calc(var(--radius) + .125rem);overflow:hidden}
+.card-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.card-title{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-desc{margin-top:3px;font-size:12px;color:var(--muted-fg)}
+.card-body{padding:18px 20px}
+.grid{display:grid;gap:16px}
+.grid.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:960px){
+  .grid.c2,.grid.c3{grid-template-columns:1fr}
+  .sidebar{position:fixed;inset:0 auto 0 0;z-index:90;transform:translateX(-100%);transition:transform .25s ease;box-shadow:0 0 48px rgb(0 0 0 / .5)}
+  .sidebar.open{transform:none}
+  .topbar{display:flex}
+  .content{padding:18px 14px 48px}
+}
+.kv{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-bottom:1px dashed hsl(222 14% 22% / .7)}
+.kv:last-child{border-bottom:none}
+.kv .k{font-size:11px;color:var(--muted-fg);letter-spacing:.02em}
+.kv .v{font-size:13.5px;word-break:break-all}
+.stat{border:1px solid var(--border);background:hsl(222 26% 9% / .6);border-radius:9px;padding:12px 14px}
+.stat .v{font-size:20px;font-weight:700;line-height:1.2}
+.stat .k{margin-top:2px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg)}
+.stat.ok .v{color:var(--success)} .stat.bad .v{color:var(--danger)} .stat.warn .v{color:var(--warning)}
+label.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+label.field:last-child{margin-bottom:0}
+label.field .lab{font-size:12.5px;font-weight:600}
+label.field .hint{font-size:11.5px;color:var(--muted-fg);line-height:1.55}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:hsl(222 26% 9% / .8);color:var(--fg);font-size:13.5px;font-family:inherit;outline:none}
+textarea{resize:vertical;line-height:1.6}
+input:focus,select:focus,textarea:focus{border-color:hsl(152 65% 45% / .6);box-shadow:0 0 0 3px hsl(152 65% 45% / .12)}
+input[type=number]{-moz-appearance:textfield}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:8px;border:1px solid var(--border);background:var(--muted);color:var(--fg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:filter .15s,opacity .15s}
+.btn:hover{filter:brightness(1.15)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.primary{background:linear-gradient(135deg,#10b981,#22c55e);border-color:transparent;color:var(--primary-fg)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger);border-color:hsl(0 72% 58% / .35);background:hsl(0 72% 58% / .08)}
+.btn.sm{padding:6px 11px;font-size:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.tag.ok{color:var(--success);background:hsl(142 71% 45% / .12);border:1px solid hsl(142 71% 45% / .25)}
+.tag.bad{color:var(--danger);background:hsl(0 72% 58% / .1);border:1px solid hsl(0 72% 58% / .25)}
+.tag.info{color:var(--info);background:hsl(200 80% 55% / .1);border:1px solid hsl(200 80% 55% / .25)}
+.code{display:block;padding:8px 10px;border-radius:8px;background:hsl(222 26% 8%);border:1px solid var(--border);font-size:12px;word-break:break-all}
+.muted{color:var(--muted-fg)}
+.err{color:var(--danger);font-size:12.5px;line-height:1.6;word-break:break-word}
+/* Hàng công tắc (Thêm mới cho bảng điều khiển này, kế thừa cùng bộ màu) */
+.switch-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px dashed hsl(222 14% 22% / .7)}
+.switch-row:last-child{border-bottom:none}
+.switch-row .sr-text{flex:1;min-width:0}
+.switch-row .sr-lab{font-size:13px;font-weight:600}
+.switch-row .sr-hint{margin-top:3px;font-size:11.5px;color:var(--muted-fg);line-height:1.55}
+.sw{position:relative;flex:none;width:42px;height:24px;border-radius:999px;background:hsl(222 16% 26%);border:1px solid var(--border);cursor:pointer;transition:background .18s}
+.sw:after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:hsl(217 12% 78%);transition:transform .18s,background .18s}
+.sw.on{background:hsl(152 65% 40%);border-color:hsl(152 65% 45% / .5)}
+.sw.on:after{transform:translateX(18px);background:#fff}
+.sw.dis{opacity:.45;cursor:not-allowed}
+/* Ảnh thu nhỏ (Thumbnail) */
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
+.thumb{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:hsl(222 26% 9% / .6)}
+.thumb img{display:block;width:100%;height:150px;object-fit:cover;background:hsl(222 26% 8%)}
+.thumb .tb-meta{padding:7px 9px;font-size:11px;color:var(--muted-fg);line-height:1.5}
+.thumb .tb-meta b{color:var(--fg);font-weight:600}
+.tb-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:700;color:var(--warning);background:hsl(38 92% 50% / .12);border:1px solid hsl(38 92% 50% / .3)}
+.empty{padding:26px 0;text-align:center;font-size:12.5px;color:var(--muted-fg);line-height:1.7}
+/* Placeholder hiển thị khi ảnh load thất bại: Đính kèm luôn địa chỉ gốc để tiện bắt bệnh do đường dẫn hay do file */
+.img-broken{padding:12px;font-size:11.5px;line-height:1.6;color:var(--danger);background:hsl(0 72% 58% / .08);border:1px dashed hsl(0 72% 58% / .35);border-radius:8px;word-break:break-all}
+.img-broken b{display:block;margin-bottom:4px;font-size:12.5px}
+/* Kết quả xuất ảnh từ bản dịch */
+.tr-preview{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:hsl(222 26% 9% / .6);display:flex;justify-content:center}
+.tr-preview img{display:block;max-width:100%;max-height:56vh;height:auto}
+/* toast */
+#toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:9px;z-index:60}
+.toast{padding:11px 15px;border-radius:10px;border:1px solid var(--border);background:hsl(222 24% 12% / .97);font-size:13px;max-width:380px;box-shadow:0 12px 30px rgb(0 0 0 / .35);line-height:1.6}
+.toast.ok{border-color:hsl(142 71% 45% / .45)}
+.toast.bad{border-color:hsl(0 72% 58% / .45)}
+/* Bridge self-test thất bại */
+#bridge-warn{display:none;margin:14px 0 0;padding:14px 16px;border-radius:10px;border:1px solid hsl(0 72% 58% / .45);background:hsl(0 72% 58% / .1);color:var(--fg);font-size:13px;line-height:1.7}
+#bridge-warn.show{display:block}
+#bridge-warn b{color:var(--danger)}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="brand">
+        <div class="brand-mark">Vi</div>
+        <div><div class="brand-name">V.Canvas</div></div>
+      </div>
+      <div class="brand-sub">VILK</div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-page="overview">Tổng quan</button>
+      <button class="nav-btn" data-page="history">Lịch sử sinh ảnh</button>
+      <button class="nav-btn" data-page="prompt">Prompt</button>
+      <button class="nav-btn" data-page="translate">Xuất ảnh từ bản dịch</button>
+      <button class="nav-btn" data-page="context">Xuất ảnh từ ngữ cảnh</button>
+      <button class="nav-btn" data-page="settings">Cài đặt</button>
+    </nav>
+    <div class="sidebar-foot">
+      <span class="pill" id="pill"><span class="pdot"></span><span id="pill-text">Đang kiểm tra...</span></span>
+      <div class="foot-note" id="foot-version">V.Canvas</div>
+    </div>
+  </aside>
+
+  <div class="mask-mobile" id="mask-mobile" onclick="toggleSidebar(false)"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="hamb" id="btn-menu" aria-label="Mở menu">
+        <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M1 1h16M1 7h16M1 13h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="tb-title">V.Canvas</div>
+    </header>
+    <div class="content">
+
+      <div id="bridge-warn">
+        <b>Chưa kết nối với extension, bảng điều khiển hiện không có quyền kiểm soát.</b><br>
+        Bảng điều khiển chỉ là giao diện frontend, cấu hình thực tế nằm bên phía SillyTavern. Vui lòng đóng bảng điều khiển này lại, F5 lại trang SillyTavern rồi mở lên lại.
+        (Nếu lỗi cứ lặp lại, nghĩa là extension đã load thất bại; Vui lòng check console của trình duyệt xem có dòng báo lỗi nào bắt đầu bằng tiền tố <span class="mono">[V.Canvas]</span> không.)
+      </div>
+
+      <!-- -- Tổng quan -- -->
+      <section class="page active" id="page-overview">
+        <div class="page-head">
+          <h1>Tổng quan</h1>
+          <p>Trạng thái plugin, cấu hình tuyến trên hiện tại và các hình ảnh đã sinh trong phiên làm việc này. Mọi thay đổi sẽ được ghi thẳng vào SillyTavern (Sửa data -> Refresh giao diện -> Lưu đĩa).</p>
+        </div>
+
+        <div class="grid c3">
+          <div class="stat" id="stat-enabled-box"><div class="v" id="stat-enabled">-</div><div class="k">Tự động vẽ hình</div></div>
+          <div class="stat"><div class="v" id="stat-upstream">-</div><div class="k">Tuyến trên hiện tại</div></div>
+          <div class="stat"><div class="v" id="stat-images">-</div><div class="k">Ảnh đã xuất trong phiên này</div></div>
+        </div>
+
+        <div class="grid c2">
+          <div class="card">
+            <div class="card-head"><div><div class="card-title">Tuyến trên (Upstream)</div><div class="card-desc">Địa chỉ và thông số của dịch vụ xuất ảnh</div></div></div>
+            <div class="card-body">
+              <div class="kv"><span class="k">Địa chỉ dịch vụ NAI</span><span class="v mono" id="ov-base">-</span></div>
+              <div class="kv"><span class="k">API Key</span><span class="v mono" id="ov-key">-</span></div>
+              <div class="kv"><span class="k">Tên Model</span><span class="v mono" id="ov-model">-</span></div>
+              <div class="kv"><span class="k">Độ phân giải / Số bước / CFG</span><span class="v mono" id="ov-params">-</span></div>
+              <div class="kv"><span class="k">Nội dung gửi đi</span><span class="v" id="ov-prompt-format">-</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div><div class="card-title">Quy tắc kích hoạt</div><div class="card-desc">Khi nào sẽ tự động xuất ảnh</div></div></div>
+            <div class="card-body">
+              <div class="kv"><span class="k">Mỗi câu trả lời tối đa</span><span class="v" id="ov-max">-</span></div>
+              <div class="kv"><span class="k">Bơm (Inject) quy tắc</span><span class="v" id="ov-inject">-</span></div>
+              <div class="kv"><span class="k">Xuất ảnh từ ngữ cảnh</span><span class="v" id="ov-ctx">-</span></div>
+              <div class="kv"><span class="k">Loại bỏ tag trong chính văn</span><span class="v" id="ov-strip">-</span></div>
+              <div class="kv"><span class="k">Cấp lại ảnh khi chuyển câu trả lời (swipe)</span><span class="v" id="ov-swipe">-</span></div>
+              <div class="kv"><span class="k">Loại tin nhắn bỏ qua</span><span class="v mono" id="ov-exclude">-</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Ảnh minh họa đã sinh trong đoạn chat này</div><div class="card-desc">Đọc trực tiếp từ lịch sử tin nhắn hiện tại, không qua bộ nhớ đệm (cache)</div></div>
+            <button class="btn sm" id="btn-refresh-overview">Làm mới</button>
+          </div>
+          <div class="card-body">
+            <div id="thumbs-wrap"><div class="empty">Đang đọc...</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- -- Lịch sử sinh ảnh -- -->
+      <section class="page" id="page-history">
+        <div class="page-head">
+          <h1>Lịch sử sinh ảnh</h1>
+          <p>Tất cả ảnh minh họa plugin này đã từng xuất ra, xếp lùi theo thứ tự thời gian. Lịch sử được lưu trong cài đặt của SillyTavern, cho dù có chuyển qua đoạn chat khác, đổi thẻ nhân vật hay F5 lại trang vẫn có thể xem lại; Có thể click vào ảnh để mở ảnh gốc trong tab mới.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Toàn bộ lịch sử</div><div class="card-desc" id="history-count">Đang đọc...</div></div>
+            <div class="row">
+              <button class="btn sm" id="btn-history-refresh">Làm mới</button>
+              <button class="btn sm danger" id="btn-history-clear">Xóa sạch lịch sử</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="history-wrap"><div class="empty">Đang đọc...</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- -- Prompt -- -->
+      <section class="page" id="page-prompt">
+        <div class="page-head">
+          <h1>Prompt</h1>
+          <p>
+            Nội dung điền ở đây sẽ được kẹp cùng chính văn gửi cho model phân tích của tính năng "Xuất ảnh từ ngữ cảnh", làm căn cứ để model này soạn ra prompt hình ảnh.
+            Có thể bỏ trống cả 3 ô, không giới hạn độ dài; Khi bỏ trống model phân tích sẽ tự định đoạt dựa theo tác phẩm và chính văn.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Prompt chất lượng tích cực</div><div class="card-desc">Yêu cầu về chất lượng và các yếu tố hiển thị trong khung hình</div></div>
+            <button class="btn sm" id="btn-prompt-reload">Tải lại</button>
+          </div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Prompt chất lượng tích cực</span>
+              <textarea id="f-ctx_quality" rows="10" placeholder="Bỏ trống = Giao cho model phân tích tự định đoạt. Có thể viết bằng ngôn ngữ tự nhiên, hoặc nhãn Danbooru tiếng Anh, ví dụ: masterpiece, best quality, ultra detailed"></textarea>
+              <span class="hint">
+                Truyền xuống dưới dạng mệnh lệnh ép buộc: Các đoạn mô tả và nhãn do model phân tích soạn ra bắt buộc phải thể hiện đúng chất lượng và các yếu tố được yêu cầu ở đây,
+                từng câu chữ và nhãn trong ô này sẽ được chép lại y xì đúc. Nếu cần bổ sung thêm chi tiết thì model phân tích sẽ tự thêm thắt,
+                nhưng phần được thêm không được phép xung đột với các yêu cầu có sẵn ở đây.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Prompt phủ định (Negative Prompt)</div><div class="card-desc">Những nội dung cần né tránh</div></div></div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Prompt phủ định</span>
+              <textarea id="f-ctx_negative" rows="8" placeholder="Bỏ trống = Không cài đặt nội dung loại trừ. Ví dụ: lowres, bad anatomy, watermark, modern clothing"></textarea>
+              <span class="hint">
+                Truyền xuống dưới dạng hạng mục loại trừ: Những nội dung được liệt kê trong này tuyệt đối không được xuất hiện trong đoạn mô tả hay đoạn nhãn do model phân tích nhả ra.
+                Cài đặt ở đây chỉ áp dụng cho nhánh "Xuất ảnh từ ngữ cảnh"; Còn negative prompt gửi thẳng cho model xuất ảnh thì nằm ở ô "Tham số xuất ảnh" trong trang "Cài đặt".
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Phong cách mỹ thuật (Art style)</div><div class="card-desc">Yêu cầu về phong cách nét vẽ</div></div></div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Phong cách mỹ thuật</span>
+              <textarea id="f-ctx_style" rows="8" placeholder="Bỏ trống = Do model phân tích tự phán đoán dựa theo tác phẩm; Ví dụ: Phong cách Anime Nhật Bản Cel-shading, Thick painting, Tông màu ấm"></textarea>
+              <span class="hint">
+                Một khi đã điền thì sẽ đóng đinh làm art style cuối cùng, model phân tích sẽ không dám thay thế bằng phong cách mà nó tự suy diễn nữa.
+                Có thể ghi rõ trường phái hội họa, nét vẽ, khuynh hướng màu sắc và chất liệu thời đại, miêu tả càng cụ thể thì hình ảnh xuất ra càng ổn định.
+                Nhân vật và trang phục thì không cần chỉ định ở đây -- Model phân tích sẽ tự đọc hiểu từ chính văn và phần hội thoại trước đó.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Từ khóa phá giới hạn / Jailbreak (Tùy chọn)</div><div class="card-desc">Dùng khi model phân tích hoặc tuyến trên xuất ảnh từ chối vẽ các nội dung máu me / người lớn; Hai model này có nội dung phá giới hạn khác nhau, cho nên được tách thành hai ô</div></div></div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Từ khóa phá giới hạn cho Model Phân Tích (Xuất ảnh từ ngữ cảnh)</span>
+              <textarea id="f-jb_llm" rows="8" placeholder="Bỏ trống = Hoàn toàn không kích hoạt. Dùng khi chính văn có chứa nội dung máu me, người lớn, để tránh việc model phân tích bị ngợp và từ chối nhả prompt."></textarea>
+              <span class="hint">
+                Một khi đã điền sẽ được nhồi y nguyên vào <b>Mỗi một request</b> gửi cho model phân tích (Nhồi trước cả chính văn). Đối tượng nhắm tới là để trị chứng "Từ chối trả lời" của cái "Model đọc text" --
+                Nội dung ô này thường là một đoạn hướng dẫn bổ sung viết cho con AI đọc.
+              </span>
+            </label>
+            <label class="field" style="margin-top:14px">
+              <span class="lab">Từ khóa phá giới hạn sinh ảnh (Tuyến trên xuất ảnh)</span>
+              <textarea id="f-jb_image" rows="8" placeholder="Bỏ trống = Hoàn toàn không kích hoạt. Dùng khi tuyến trên xuất ảnh từ chối vẽ một số khung hình nhất định."></textarea>
+              <span class="hint">
+                Một khi đã điền sẽ được nhồi y nguyên vào <b>Đầu của đoạn prompt xuất ảnh</b> (Luồng Tự động xuất ảnh hay Xuất ảnh từ bản dịch đều ăn).
+                Đối tượng nhắm tới là để lách bộ kiểm duyệt của cái "Model vẽ tranh / Proxy" -- Nội dung ô này thường là tag hoặc các tiền tố mô tả khung hình.
+              </span>
+            </label>
+            <div class="muted" style="font-size:12px;line-height:1.65;margin-top:10px">
+              Plugin này không tích hợp sẵn bất kỳ nội dung nào, cả hai ô bỏ trống thì coi như tính năng này chưa hề tồn tại; Nội dung và mục đích sử dụng do người dùng tự điền và tự chịu trách nhiệm.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Phạm vi áp dụng và Phương thức Request</div><div class="card-desc">Ba ô này có hiệu lực khi nào</div></div></div>
+          <div class="card-body">
+            <div class="muted" style="font-size:12.5px;line-height:1.8">
+              Chỉ áp dụng cho luồng <b>Xuất ảnh từ ngữ cảnh</b>. Trong luồng Điều hướng bằng thẻ đánh dấu, prompt đã được model cốt truyện nhả thẳng vào trong
+              <span class="mono">[ILLUST: …]</span> của chính văn rồi, nên không có đi ngang qua chỗ này đâu.
+              <br>Mỗi một request quăng cho model phân tích đều là một cuộc đối thoại hoàn toàn độc lập, không mang theo lịch sử các lượt trước;
+              Do đó nội dung điền trong trang này sẽ được bưng đi gửi trọn vẹn theo từng request, đảm bảo không bị các luồng hội thoại sau này làm loãng hay ghi đè.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- -- Xuất ảnh từ bản dịch -- -->
+      <section class="page" id="page-translate">
+        <div class="page-head">
+          <h1>Xuất ảnh từ bản dịch</h1>
+          <p>Nhập một câu mô tả ngắn gọn, giao cho dịch vụ adapter mở rộng thành prompt hình ảnh hoàn chỉnh rồi tiến hành xuất ảnh. Trang này và chu trình tự động xuất ảnh hoàn toàn tách biệt nhau, kết quả chỉ hiển thị trong bảng điều khiển này, không ghi vào lịch sử chat.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Dữ liệu đầu vào</div><div class="card-desc">Tên nhân vật, cụm từ tả bối cảnh đều nhận tuốt</div></div></div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Mô tả ngắn gọn</span>
+              <textarea id="tr-text" rows="3" placeholder="Ví dụ: Nobi Tamako trong Doraemon / Thiếu nữ tóc bạc đứng dưới mưa trên con phố neon"></textarea>
+            </label>
+            <label class="field">
+              <span class="lab">Độ phân giải</span>
+              <select id="tr-size-mode">
+                <option value="auto">Tự động - Đi theo độ phân giải được khuyến nghị sau khi dịch</option>
+                <option value="fixed">Sử dụng tham số xuất ảnh ở trang "Cài đặt"</option>
+              </select>
+              <span class="hint">
+                Khâu mở rộng do dịch vụ adapter thi hành (Cái <span class="mono">expand=1</span> của V.Adapter), độ phân giải "Tự động" cũng được lấy từ kết quả sau khi mở rộng.
+                Nếu kết nối thẳng đến dịch vụ NAI official hoặc NAI Gateway, bước mở rộng sẽ không diễn ra, lúc này vui lòng chọn mục bên dưới.
+              </span>
+            </label>
+            <div class="row">
+              <button class="btn primary" id="btn-tr-gen">Dịch và Xuất ảnh</button>
+            </div>
+            <div class="err" id="tr-err"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Kết quả</div><div class="card-desc">Chỉ hiển thị nội trong bảng điều khiển này</div></div>
+            <button class="btn sm" id="btn-tr-copy">Copy prompt</button>
+          </div>
+          <div class="card-body">
+            <div id="tr-result"><div class="empty">Chưa có ảnh nào.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- -- Xuất ảnh từ ngữ cảnh -- -->
+      <section class="page" id="page-context">
+        <div class="page-head">
+          <h1>Xuất ảnh từ ngữ cảnh</h1>
+          <p>
+            Cấu hình thêm một model ngôn ngữ riêng biệt, giao cho nó trọng trách đọc hiểu chính văn và phần trước đó để quyết định vị trí chèn hình, tự soạn prompt và
+            ném qua cho tuyến trên vẽ hình. Nhánh này không thèm quan tâm model cốt truyện có hợp tác hay không, vứt thẻ nhân vật nào vào cũng chơi láng.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Công tắc tổng</div><div class="card-desc">Bật lên, khi câu trả lời của nhân vật không có thẻ đánh dấu thì sẽ tự động phi vào nhánh này</div></div>
+            <button class="btn sm" id="btn-ctx-reload">Tải lại</button>
+          </div>
+          <div class="card-body">
+            <div class="switch-row">
+              <div class="sw" id="sw-ctx_enabled" data-key="ctx_enabled"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Kích hoạt Xuất ảnh từ ngữ cảnh</div>
+                <div class="sr-hint">
+                  Tồn tại song song với nhánh Điều hướng bằng thẻ đánh dấu nhưng không dẫm chân nhau: Khi chính văn có sẵn <span class="mono">[ILLUST: …]</span> thì đi nhánh đánh dấu (Đỡ tốn thời gian chờ);
+                  Nếu không có thẻ thì mới gọi model phân tích ra làm việc.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Model phân tích</div><div class="card-desc">API Chat tương thích OpenAI, không liên quan gì tới tuyến trên xuất ảnh</div></div>
+            <button class="btn sm" id="btn-ctx-test">Test kết nối</button>
+          </div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Địa chỉ API</span>
+              <input type="text" id="f-ctx_url" placeholder="https://api.openai.com/v1　hoặc　http://127.0.0.1:4000/v1">
+              <span class="hint">API nào tương thích chuẩn OpenAI cũng được hết: Official, proxy, local gì cân tất. Không đá động gì tới cái Địa chỉ dịch vụ NAI bên trang "Cài đặt" đâu.</span>
+            </label>
+            <label class="field">
+              <span class="lab">API Key</span>
+              <input type="text" id="f-ctx_key" placeholder="Key của dịch vụ đó; Mấy cái dịch vụ local không bắt xác thực thì bỏ trống cũng được">
+            </label>
+            <label class="field">
+              <span class="lab">Tên model</span>
+              <input type="text" id="f-ctx_model" placeholder="Ví dụ gpt-4o-mini, qwen3.8-max, deepseek-chat">
+              <span class="hint">Không có giá trị mặc định, bắt buộc tự điền tay. Model này chỉ vác mỗi cái việc mường tượng khung hình và soạn prompt thôi, cho nên recommend dùng mấy con model hạng nhẹ (lightweight) cho lẹ.</span>
+            </label>
+            <div class="muted" style="font-size:12px;line-height:1.65;margin-bottom:14px">
+              Phong cách mỹ thuật, Prompt chất lượng tích cực, Prompt phủ định và <b>Từ khóa phá giới hạn</b> vui lòng điền ở bên <b>Trang "Prompt"</b>, ở trang này không cấu hình trùng lặp nữa.
+              Từ khóa phá giới hạn sẽ được đính kèm theo mỗi một request của model phân tích trên trang này -- Nếu chính văn có chứa nội dung máu me, người lớn làm model phân tích sợ không dám trả lời, thì cứ quăng thêm giải thích phụ trợ vào cái ô đó là qua ải.
+            </div>
+            <label class="field">
+              <span class="lab">Timeout phân tích (giây)</span>
+              <input type="number" id="f-ctx_timeout_sec" min="10" max="600">
+            </label>
+            <div class="muted" style="font-size:12px;line-height:1.65">
+              Số lượng ảnh xuất ra sẽ do cục <b>Mỗi câu trả lời tối đa</b> ở trang "Cài đặt" bóp cổ lại, xài chung một thiết lập với nhánh Điều hướng bằng thẻ đánh dấu luôn.
+              Khi số lượng cần vẽ nhiều hơn một, model phân tích sẽ tự động bóc tách và chèn rải rác vào đầu, giữa và cuối của chính văn.
+            </div>
+            <div class="err" id="ctx-test-err" style="margin-top:10px"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Chạy test tức thì</div><div class="card-desc">Thực hiện quy trình phân tích và xuất ảnh lên câu trả lời cuối cùng của nhân vật</div></div>
+            <button class="btn primary sm" id="btn-ctx-gen">Phân tích và vẽ luôn</button>
+          </div>
+          <div class="card-body">
+            <div id="ctx-result"><div class="empty">Bấm cái nút này là có thể verify luôn cái dây chuyền này có chạy mượt hay không, không cần phải đợi tới lượt chat sau.</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Sự tương thích giữa thành phẩm và Tuyến trên</div><div class="card-desc">Kết quả phân tích sẽ được mớm cho tuyến trên xuất ảnh bằng cách nào</div></div></div>
+          <div class="card-body">
+            <div class="muted" style="font-size:12.5px;line-height:1.8">
+              Với mỗi một khung hình, model phân tích sẽ nhả ra <b>Mô tả bằng ngôn ngữ tự nhiên</b> và <b>Danbooru tags</b> cùng lúc,
+              cục <b>Hình thái nội dung gửi đi</b> ở trang "Cài đặt" sẽ đứng ra quyết định mớm cục nào cho tuyến trên:
+              <br>· Đi đường V.Adapter (Tuyến trên định dạng OpenAI) -> Mớm mô tả tự nhiên;
+              <br>· Nối thẳng Official NovelAI / NAI Gateway (Mô hình khuếch tán - Diffusion) -> Mớm thẻ tags.
+              <br>Hai đường ống xuất ảnh này đều bòn rút chung một bãi thành phẩm, khỏi lo cấu hình rườm rà. Ảnh minh họa chỉ hiển thị lên bề mặt thôi, prompt text sẽ không lưu lại trong chính văn, và càng không chui vào ngữ cảnh (context).
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- -- Cài đặt -- -->
+      <section class="page" id="page-settings">
+        <div class="page-head">
+          <h1>Cài đặt</h1>
+          <p>Chỉnh tới đâu lưu ngay tới đó. Cái bảng này chỉ là cái vỏ (frontend) thôi, chuyện ghi vào ổ cứng (thực tế) là do phần extension lõi bên SillyTavern lo.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Công tắc tổng</div><div class="card-desc">Tắt rồi thì dù câu trả lời của AI có nhét thẻ tag vào cũng không thèm vẽ đâu nhé</div></div>
+            <button class="btn sm" id="btn-reload-settings">Tải lại</button>
+          </div>
+          <div class="card-body">
+            <div class="switch-row">
+              <div class="sw" id="sw-enabled" data-key="enabled"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Bật tự động vẽ hình</div>
+                <div class="sr-hint">Đánh hơi thấy thẻ <span class="mono">[ILLUST: …]</span> là tự xách cọ lên vẽ rồi nhét vào ngay tại chỗ luôn.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Tuyến trên (Upstream)</div><div class="card-desc">Địa chỉ dịch vụ giao thức NovelAI và phương thức xác thực</div></div>
+            <button class="btn sm" id="btn-test">Test kết nối</button>
+          </div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Địa chỉ dịch vụ NAI</span>
+              <input type="text" id="f-base_url" placeholder="Bỏ trống = Tự động mò xài V.Adapter trên cùng trang web">
+              <span class="hint">Nếu cài sẵn V.Adapter thì <strong>Cứ bỏ trống là được</strong>, hai thằng extension sẽ tự bắt tay nhau mà không cần cấu hình port gì ráo; Bắt buộc phải điền khi nối thẳng Official NAI / NAI Gateway bên thứ 3. Nếu điền vào mà xui xẻo rớt mạng, hệ thống cũng sẽ tự lật đật mò về xài V.Adapter.</span>
+            </label>
+            <label class="field">
+              <span class="lab">API Key</span>
+              <input type="text" id="f-api_key" placeholder="nai_key của dịch vụ adapter; Phía server không cài key thì điền bậy bạ cũng vào được">
+            </label>
+            <label class="field">
+              <span class="lab">Tên Model</span>
+              <input type="text" id="f-model" placeholder="Official NAI / Gateway bắt buộc phải điền, ví dụ nai-diffusion-4-5-full; Băng qua V.Adapter thì thông số này bị vứt sọt rác">
+              <span class="hint">Không có giá trị mặc định, bắt buộc tự điền tay.</span>
+            </label>
+            <div class="err" id="test-err"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Hình thái nội dung gửi đi</div><div class="card-desc">Quyết định xem ném đoạn nào trong cái thẻ đánh dấu cho tuyến trên xơi</div></div>
+          </div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Nội dung gửi cho tuyến trên</span>
+              <select id="f-prompt_format">
+                <option value="auto">auto — Tự động ngó địa chỉ mà bắt bài (Mặc định)</option>
+                <option value="description">description — Sống chết ném ngôn ngữ mô tả tự nhiên</option>
+                <option value="tags">tags — Sống chết ném nhãn Danbooru</option>
+                <option value="both">both — Cột cả mô tả lẫn nhãn thành một cục ném sang</option>
+              </select>
+              <span class="hint">
+                Hình dạng (Format) của thẻ đánh dấu là <span class="mono">[ILLUST: Mô tả bằng ngôn ngữ tự nhiên | Danbooru,Tags]</span>,
+                Hai mảng này chuyên trị hai loại tuyến trên khác nhau. Mô hình khuếch tán (Official NovelAI / NAI Gateway) thì ăn tags mới tiêu hóa nổi;
+                Tuyến trên định dạng OpenAI (Bao gồm LLM Chat) thì đòi hỏi phải là câu chữ đàng hoàng.<br>
+                Luật lệ để thằng <span class="mono">auto</span> nó bắt bài: Địa chỉ là
+                <span class="mono">127.0.0.1</span> / <span class="mono">localhost</span> /
+                <span class="mono">:8888</span> (Tức là đang chuyển tiếp qua V.Adapter) thì ném đoạn mô tả, còn lại thì nhồi tags vào.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Tham số xuất ảnh</div><div class="card-desc">Phóng thẳng cho tuyến trên (Upstream)</div></div></div>
+          <div class="card-body">
+            <div class="switch-row">
+              <div class="sw" id="sw-parallel" data-key="parallel"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Xuất ảnh song song (Parallel)</div>
+                <div class="sr-hint">
+                  Mặc định là tắt (Tuần tự: Xong tấm này mới xin tấm khác). Bật lên thì nó sẽ spam request dựa theo cục "Mỗi câu trả lời tối đa",
+                  Thằng nào chạy xong trước thì chèn vào trước, mạnh ai nấy chạy không chờ đợi. Chỉ nên xài với mấy tuyến trên sộp cho phép concurrency (Đồng thời);
+                  Mấy cái proxy bị bóp băng thông (Rate limit) hay khóa mỏ (Phong hiểm / Risk control) thì ráng mà tắt giùm.
+                </div>
+              </div>
+            </div>
+            <div class="grid c3" style="margin-top:14px">
+              <label class="field"><span class="lab">Rộng (Width)</span><input type="number" id="f-width" min="64" max="2048" step="8"></label>
+              <label class="field"><span class="lab">Cao (Height)</span><input type="number" id="f-height" min="64" max="2048" step="8"></label>
+              <label class="field"><span class="lab">Số bước (Steps)</span><input type="number" id="f-steps" min="1" max="50"></label>
+            </div>
+            <div class="grid c3">
+              <label class="field"><span class="lab">CFG (scale)</span><input type="number" id="f-scale" min="0" max="30" step="0.5"></label>
+              <label class="field"><span class="lab">Mỗi câu trả lời tối đa (Tấm)</span><input type="number" id="f-max_per_round" min="1" max="6"></label>
+              <label class="field"><span class="lab">Timeout mỗi tấm (giây)</span><input type="number" id="f-timeout_sec" min="30" max="1800"></label>
+            </div>
+            <label class="field">
+              <span class="lab">Thời gian delay giữa 2 tấm (Mili-giây)</span>
+              <input type="number" id="f-interval_ms" min="0" max="60000" step="100">
+              <span class="hint">Né tình trạng spam click với bị bóp băng thông; Xài proxy chùa (Shared gateway) thì khuyên dùng 0～1000.</span>
+            </label>
+            <label class="field">
+              <span class="lab">Prompt phủ định (Negative Prompt)</span>
+              <textarea id="f-negative" rows="3" placeholder="Bỏ trống thì coi như không có"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Quy tắc kích hoạt</div><div class="card-desc">Điều kiện kích hoạt và luật xử lý (deduplication)</div></div></div>
+          <div class="card-body">
+            <div class="switch-row">
+              <div class="sw" id="sw-swipe_regenerate" data-key="swipe_regenerate"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Cấp lại ảnh khi chuyển câu trả lời (swipe)</div>
+                <div class="sr-hint">Tắt cái này đi thì lúc quẹt qua câu trả lời khác sẽ dễ bị dính mấy tấm ảnh trớt quớt không ăn nhập gì với cốt truyện.</div>
+              </div>
+            </div>
+            <div class="switch-row">
+              <div class="sw" id="sw-strip_marker" data-key="strip_marker"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Loại bỏ tag trong chính văn</div>
+                <div class="sr-hint">Ảnh minh họa chỉ hiển thị cho đẹp bề ngoài thôi, không nhảy vào Context của AI để phá đám đâu, cũng không ăn mất Token. Tắt đi thì AI nó sẽ dòm thấy đống thẻ đánh dấu do chính nó nhả ra.</div>
+              </div>
+            </div>
+            <label class="field" style="margin-top:14px">
+              <span class="lab">Loại tin nhắn bỏ qua</span>
+              <input type="text" id="f-exclude_types" placeholder="impersonate">
+              <span class="hint">Ngăn cách bằng dấu phẩy. Mặc định cạch mặt <span class="mono">impersonate</span> (Tin nhắn nhại lời).</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Bơm (Inject) prompt</div><div class="card-desc">Quy tắc định hướng ép AI phải nhả ra cái tag</div></div>
+            <button class="btn sm" id="btn-copy-rule">Copy Quy tắc</button>
+          </div>
+          <div class="card-body">
+            <div class="switch-row">
+              <div class="sw" id="sw-inject_prompt" data-key="inject_prompt"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Tự động ném quy tắc ILLUST thẳng vào mặt model</div>
+                <div class="sr-hint">Hễ tắt đi là phải tự lụi hụi copy cái cục quy tắc ở dưới dán vào Worldbook hay Thẻ nhân vật đấy nhé.</div>
+              </div>
+            </div>
+            <div class="grid c2" style="margin-top:14px">
+              <label class="field" style="margin:0">
+                <span class="lab">Vị trí bơm (Inject position)</span>
+                <select id="f-inject_position">
+                  <option value="in_chat">in_chat — Cắm thẳng vào trước câu trả lời (Đề xuất)</option>
+                  <option value="in_prompt">in_prompt — Sát nhập vào Main System Prompt</option>
+                </select>
+              </label>
+              <label class="field" style="margin:0">
+                <span class="lab">Độ sâu cắm chốt (Chỉ có tác dụng với in_chat)</span>
+                <input type="number" id="f-inject_depth" min="0" max="20">
+              </label>
+            </div>
+            <div class="muted" style="margin-bottom:14px;font-size:12px;line-height:1.65">
+              Khi Template output bị Worldbook của Thẻ nhân vật xích cổ (Thường thấy ở mấy Thẻ nhân vật độ chế (Customized) hạng nặng), Worldbook hay có cái trò bơm nguyên một hệ thống format vào
+              <span class="mono">depth 0</span>, thế là cái quyền ưu tiên của nó sẽ đạp chết luôn quy tắc nằm trong Main System Prompt.
+              Gặp tình huống này thì phải chỉnh Vị trí bơm về <span class="mono">in_chat</span> với độ sâu là <span class="mono">0</span>,
+              để ép quy tắc này ngồi chung mâm với cái template kia. Nếu vẫn ngoan cố không có tác dụng, vui lòng tự giác dùng "Copy Quy tắc" rồi paste thẳng vào Worldbook của Thẻ nhân vật đó,
+              để biến thẻ đánh dấu thành một bộ phận trong hệ thống Output của nó luôn.
+            </div>
+            <label class="field" style="margin-top:0">
+              <span class="lab">Quy tắc hiện tại (Chỉ đọc)</span>
+              <textarea id="f-rule" rows="4" readonly></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Nâng cao</div><div class="card-desc">Chuẩn đoán (Diagnostics)</div></div>
+            <button class="btn sm danger" id="btn-reset">Khôi phục mặc định</button>
+          </div>
+          <div class="card-body">
+            <div class="switch-row">
+              <div class="sw" id="sw-debug" data-key="debug"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Bật nhật ký console (Log detail)</div>
+                <div class="sr-hint">Bật lên, trình duyệt sẽ tuôn ra cả rổ log quá trình (process) có tiền tố <span class="mono">[V.Canvas]</span> ở màn hình Console.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   Bảng điều khiển này chỉ là cái Frontend (Vỏ): Toàn bộ thao tác Read/Write đều phải đẩy qua API __V_CANVAS_API__ trên trang SillyTavern để extension lõi lo.
+   Cái bảng điều khiển này có khi là iframe nhúng (window.parent), cũng có khi là mở ở tab mới (window.opener);
+   Cả hai trường hợp đều trỏ về chung một trang SillyTavern gốc. Moi mãi mà không thấy hàm này nghĩa là bảng điều khiển bị truất quyền kiểm soát,
+   Lúc này thì phơi nguyên cái mặt lỗi ra luôn, cấm được lặng lẽ giấu nhẹm đi (Silent degradation).
+   ───────────────────────────────────────────────────────────── */
+function resolveApi() {
+  try { if (window.parent && window.parent !== window && typeof window.parent.__V_CANVAS_API__ === 'function') return window.parent.__V_CANVAS_API__; } catch (e) { /* Lỗi Cross-domain thì bỏ qua */ }
+  try { if (window.opener && typeof window.opener.__V_CANVAS_API__ === 'function') return window.opener.__V_CANVAS_API__; } catch (e) { /* Lỗi Cross-domain thì bỏ qua */ }
+  try { if (typeof window.__V_CANVAS_API__ === 'function') return window.__V_CANVAS_API__; } catch (e) { /* Bỏ qua */ }
+  return undefined;
+}
+
+let API = resolveApi();
+const READY = typeof API === 'function';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* -- Xử lý (Parse) địa chỉ ảnh --
+   SillyTavern trả về địa chỉ là đường dẫn gốc (/user/images/…), nhưng trang panel này lại nằm tận
+   /scripts/extensions/third-party/<extension>/panel.html, xài đường dẫn tương đối (Relative path) là đi tong (bị parse vô luôn thư mục của extension).
+   Thế nên phải chơi trò bám lấy gốc (Root) của SillyTavern để rèn ra địa chỉ tuyệt đối, như vậy mới vớt vát được mấy cách viết tương đối lỡ lọt vào lịch sử. */
+const APP_BASE = (() => {
+  try { if (window.parent && window.parent !== window && window.parent.location) return window.parent.location.href; } catch (e) { /* Lỗi Cross-domain thì bỏ qua */ }
+  try { if (window.opener && window.opener.location) return window.opener.location.href; } catch (e) { /* Lỗi Cross-domain thì bỏ qua */ }
+  return location.href.replace(/scripts\/extensions\/.*$/, '');   // Phao cứu sinh cuối cùng: Chặt sạch từ đoạn extension tính đi
+})();
+
+function imgUrl(u) {
+  const s = String(u ?? '').trim();
+  if (!s) return '';
+  if (/^(https?:|data:|blob:)/i.test(s)) return s;
+  try { return new URL(s.replace(/^\.\//, ''), APP_BASE).href; } catch (e) { return s; }
+}
+
+// Khi tải hình ảnh thất bại phải có báo lỗi rõ mồn một đập vào mặt (Chứ không phải để nguyên một cục trắng trơn hay icon hỏng, không biết đường đâu mà mò)
+function markImgErrors(root) {
+  root.querySelectorAll('img').forEach(im => {
+    const onErr = () => {
+      const src = im.getAttribute('src') || '';
+      const box = document.createElement('div');
+      box.className = 'img-broken';
+      box.innerHTML = '<b>Hình ảnh thất bại không thể load</b><br>' +
+        '<a href="' + esc(src) + '" target="_blank" rel="noopener noreferrer">Mở cái đường link này ở một Tab mới xem thử (Để chẩn bệnh xem là do cái link tỏi rồi hay do mạng mẽo có vấn đề)</a><br>' +
+        esc(src);
+      im.replaceWith(box);
+    };
+    if (im.complete && im.naturalWidth === 0) onErr();
+    else im.addEventListener('error', onErr, { once: true });
+  });
+}
+
+// Xử lý chung các thẻ <img>: Hình ảnh lấy từ nguồn ngoài (Remote) thì phải tước quyền (Disable) Referer của nó -- Bởi vì cái cục CDN bên trên (cdn.qwenlm.ai) nó có gài bẫy chống hotlink (Anti-hotlinking),
+// vác cái Referer có mặt SillyTavern lên là nó quăng vào mặt cái 403 ngay, nó chỉ cho qua nếu "Không có Referer" hoặc là Referer phe nhà nó thôi.
+// Ảnh chèn trong đoạn chat hiển thị bình thường cũng chính là vì lý do đó (Khâu render bên SillyTavern đã chặn Referer lại); Ở bảng điều khiển lúc trước không gài, nên y như rằng là đi tong.
+function imgTag(url, cls) {
+  return '<img src="' + esc(url) + '"' + (cls ? ' class="' + cls + '"' : '') +
+    ' referrerpolicy="no-referrer" alt="illustration">';
+}
+
+// Hình ảnh thu nhỏ (Thumbnails): Cả Remote với Local đều xài chung một bộ thuộc tính (attribute)
+function thumbImg(url) {
+  return imgTag(imgUrl(url));
+}
+
+// Link dẫn từ xa (Chưa ghi vào ổ cứng) có nguồn gốc từ link rác của tuyến trên, không có bảo hành ngày hết hạn; Trên bảng điều khiển phải xì nó ra cho rõ ràng.
+function isRemoteUrl(u) { return /^https?:/i.test(String(u ?? '').trim()); }
+function remoteTag(u) {
+  return isRemoteUrl(u) ? '<span class="tb-tag">Link từ xa · Chưa ghi đĩa</span>' : '';
+}
+
+let SETTINGS = null;
+let STATE = null;
+
+function toast(msg, kind = 'ok') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = esc(msg);
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+async function call(action, payload) {
+  // Hàm bridge (Cầu nối) có khi lên thớt chậm hơn cả cái bảng (Độ trễ thời gian (Timing) khi load iframe nhúng), Mỗi lần hú nó thì phải moi nó ra lại.
+  if (typeof API !== 'function') API = resolveApi();
+  if (typeof API !== 'function') return { ok: false, error: 'Chưa gắn kết được với trang SillyTavern: Vui lòng click "Mở bảng quản lý" ở ngăn kéo Extension' };
+  try {
+    const r = await API(action, payload ?? null);
+    if (!r || typeof r !== 'object') return { ok: false, error: 'Extension nhả ra mớ dữ liệu lạ hoắc không parse được' };
+    return r;
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+/* -- Chuyển Tab -- */
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b === btn));
+    const name = btn.dataset.page;
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+    toggleSidebar(false);
+    if (name === 'history') refreshHistory();
+  };
+});
+function toggleSidebar(open) {
+  document.querySelector('.sidebar').classList.toggle('open', open);
+  $('mask-mobile').classList.toggle('show', open);
+}
+$('btn-menu').onclick = () => toggleSidebar(true);
+
+/* -- Giao diện Cài đặt -- */
+const TEXT_KEYS = ['base_url', 'api_key', 'model', 'negative', 'prompt_format', 'exclude_types', 'inject_position', 'ctx_url', 'ctx_key', 'ctx_model', 'ctx_style', 'ctx_quality', 'ctx_negative', 'jb_llm', 'jb_image'];
+const NUM_KEYS = ['width', 'height', 'steps', 'scale', 'max_per_round', 'timeout_sec', 'interval_ms', 'inject_depth', 'ctx_timeout_sec'];
+const BOOL_KEYS = ['enabled', 'swipe_regenerate', 'strip_marker', 'inject_prompt', 'debug', 'ctx_enabled', 'parallel'];
+
+function fillForm(s) {
+  SETTINGS = s;
+  for (const k of TEXT_KEYS) { const el = $('f-' + k); if (el) el.value = s[k] ?? ''; }
+  for (const k of NUM_KEYS) { const el = $('f-' + k); if (el) el.value = s[k] ?? ''; }
+  for (const k of BOOL_KEYS) { const el = $('sw-' + k); if (el) el.classList.toggle('on', !!s[k]); }
+}
+
+// Gửi đi (Submit) chung một form: Chỉ cần một mục đổi giá trị là ghi ngay (save), xả ra changed / notes
+async function commit(patch, label) {
+  const r = await call('settings.patch', patch);
+  if (!r.ok) { toast('Lưu thất bại: ' + (r.error || 'Lỗi không xác định'), 'bad'); return false; }
+  if (r.data && r.data.settings) fillForm(r.data.settings);
+  const changed = (r.data && r.data.changed) || [];
+  const notes = (r.data && r.data.notes) || [];
+  if (changed.length) toast(label + ': Đã lưu và có hiệu lực (hot-reload)');
+  if (notes.length) toast(notes.join('; '), 'bad');
+  await refreshOverview();
+  return true;
+}
+
+TEXT_KEYS.forEach(k => {
+  const el = $('f-' + k);
+  if (el) el.addEventListener('change', () => commit({ [k]: el.value }, 'Cài đặt'));
+});
+NUM_KEYS.forEach(k => {
+  const el = $('f-' + k);
+  if (el) el.addEventListener('change', () => commit({ [k]: el.value }, 'Cài đặt'));
+});
+BOOL_KEYS.forEach(k => {
+  const el = $('sw-' + k);
+  if (!el) return;
+  el.onclick = () => {
+    if (!READY) return;
+    const next = !el.classList.contains('on');
+    el.classList.toggle('on', next);           // Nhả hiệu ứng trước, fail thì lật ngược về cũ (rollback)
+    commit({ [k]: next }, k === 'enabled' ? 'Công tắc tổng' : 'Cài đặt').then(ok => {
+      if (!ok) el.classList.toggle('on', !next);
+    });
+  };
+});
+
+/* -- Tổng quan (Overview) -- */
+function kvSet(id, text) { const el = $(id); if (el) el.textContent = text; }
+
+const PROMPT_FORMAT_LABEL = {
+  auto: 'auto (Nhìn địa chỉ mà tự xử)',
+  description: 'description (Mô tả bằng ngôn ngữ tự nhiên)',
+  tags: 'tags (Danbooru Tags)',
+  both: 'both (Combo cả Mô tả lẫn Tags)',
+};
+
+async function refreshOverview() {
+  const r = await call('state');
+  if (!r.ok) { kvSet('pill-text', 'Extension chưa nối cáp'); $('pill').className = 'pill off'; return; }
+  const d = r.data || {};
+  STATE = d;
+  const s = d.settings || {};
+
+  const pill = $('pill');
+  if (d.enabled) { pill.className = 'pill'; kvSet('pill-text', 'Tự động vẽ hình đã bật'); }
+  else { pill.className = 'pill off'; kvSet('pill-text', 'Tự động vẽ hình bị tắt'); }
+  kvSet('foot-version', 'V.Canvas ' + (d.version || ''));
+
+  const box = $('stat-enabled-box');
+  box.className = 'stat ' + (d.enabled ? 'ok' : 'bad');
+  kvSet('stat-enabled', d.enabled ? 'Đã bật' : 'Đã tắt');
+  kvSet('stat-upstream', d.upstreamKind || '-');
+  kvSet('stat-images', String((d.images || []).length));
+
+  kvSet('ov-base', s.base_url || '(Chưa cấu hình)');
+  kvSet('ov-key', d.apiKeyMasked || '(Chưa cài đặt)');
+  kvSet('ov-model', s.model || '(Rỗng)');
+  kvSet('ov-params', `${s.width} × ${s.height} · ${s.steps} bước · CFG ${s.scale}`);
+  kvSet('ov-prompt-format', PROMPT_FORMAT_LABEL[s.prompt_format] || s.prompt_format || '-');
+  kvSet('ov-max', (s.max_per_round || 0) + ' tấm');
+  kvSet('ov-inject', s.inject_prompt
+    ? 'Bật · ' + (s.inject_position === 'in_prompt' ? 'in_prompt' : `in_chat (độ sâu ${s.inject_depth})`)
+    : 'Tắt');
+  kvSet('ov-ctx', s.ctx_enabled ? 'Bật · ' + (s.ctx_model || 'Chưa điền tên model') : 'Tắt');
+  kvSet('ov-strip', s.strip_marker ? 'Bật' : 'Tắt');
+  kvSet('ov-swipe', s.swipe_regenerate ? 'Bật' : 'Tắt');
+  kvSet('ov-exclude', s.exclude_types || '(Không có)');
+
+  const imgs = d.images || [];
+  const wrap = $('thumbs-wrap');
+  if (!imgs.length) {
+    wrap.innerHTML = '<div class="empty">Chưa có tấm ảnh nào được vẽ trong phiên làm việc này.<br>Mỗi khi AI nó nhả câu trả lời có cài cắm tag thì thành phẩm sẽ tụ tập hết ở đây.</div>';
+  } else {
+    wrap.innerHTML = '<div class="thumbs">' + imgs.map(it =>
+      '<div class="thumb">' +
+        '<a href="' + esc(imgUrl(it.url)) + '" target="_blank" rel="noopener noreferrer">' +
+          thumbImg(it.url) +
+        '</a>' +
+        '<div class="tb-meta"><b>Dòng ' + esc(it.messageId) + '</b> · Tấm thứ ' + esc(it.index + 1) + remoteTag(it.url) + '<br>' +
+        esc((it.prompt || '').slice(0, 60)) + '</div>' +
+      '</div>').join('') + '</div>';
+    markImgErrors(wrap);
+  }
+}
+
+$('btn-refresh-overview').onclick = async () => { await refreshOverview(); toast('Đã làm mới'); };
+
+/* -- Lịch sử sinh ảnh -- */
+function fmtTime(t) {
+  if (!t) return '-';
+  const d = new Date(t);
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+async function refreshHistory() {
+  const wrap = $('history-wrap');
+  if (!wrap) return;
+  const r = await call('history.list');
+  if (!r.ok) {
+    kvSet('history-count', 'Load thất bại');
+    wrap.innerHTML = '<div class="err">' + esc(r.error || 'Lỗi không xác định') + '</div>';
+    return;
+  }
+  const list = (r.data && r.data.history) || [];
+  kvSet('history-count', list.length ? 'Tổng cộng ' + list.length + ' dòng' : 'Tạm thời chưa có gì');
+  if (!list.length) {
+    wrap.innerHTML = '<div class="empty">Gia tài chưa có một bức ảnh minh họa nào cả.<br>Mỗi khi sinh ảnh thành công thì nó sẽ tự động chui vào trong này nằm.</div>';
+    return;
+  }
+  wrap.innerHTML = '<div class="thumbs">' + list.map(it =>
+    '<div class="thumb">' +
+      '<a href="' + esc(imgUrl(it.url)) + '" target="_blank" rel="noopener noreferrer">' +
+        thumbImg(it.url) +
+      '</a>' +
+      '<div class="tb-meta"><b>' + esc(fmtTime(it.t)) + '</b>' +
+        (it.name ? ' · ' + esc(it.name) : '') + remoteTag(it.url) +
+        '<br>' + esc((it.prompt || '').slice(0, 60)) + '</div>' +
+    '</div>').join('') + '</div>';
+  markImgErrors(wrap);
+}
+
+$('btn-history-refresh').onclick = async () => { await refreshHistory(); toast('Đã làm mới'); };
+$('btn-history-clear').onclick = async () => {
+  if (!window.confirm('Quét sạch toàn bộ lịch sử? Các file ảnh đã được nện xuống ổ đĩa vẫn an toàn, ở đây chỉ xóa sổ cái danh sách này thôi.')) return;
+  const r = await call('history.clear');
+  if (!r.ok) { toast('Dọn dẹp thất bại: ' + (r.error || ''), 'bad'); return; }
+  await refreshHistory();
+  toast('Đã dọn dẹp sạch sẽ');
+};
+
+/* -- Xuất ảnh từ bản dịch -- */
+let TR_BUSY = false;
+
+function renderTranslateResult(d) {
+  const url = imgUrl(d.url);
+  $('tr-result').innerHTML =
+    '<div class="tr-preview">' + imgTag(url) + '</div>' +
+    '<label class="field" style="margin-top:14px">' +
+      '<span class="lab">Prompt thực tế ném lên cho tuyến trên</span>' +
+      '<textarea id="tr-prompt" rows="6" readonly></textarea>' +
+    '</label>' +
+    '<div class="row" style="margin-top:10px">' +
+      '<a class="btn sm" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Mở sang tab mới để coi</a>' +
+    '</div>';
+  $('tr-prompt').value = d.prompt || '';
+  markImgErrors($('tr-result'));
+}
+
+$('btn-tr-gen').onclick = async () => {
+  if (TR_BUSY) return;
+  const text = $('tr-text').value.trim();
+  if (!text) { toast('Nhập mô tả vào đi chứ', 'bad'); return; }
+  const btn = $('btn-tr-gen');
+  TR_BUSY = true;
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = 'Đang nhào nặn... (Dịch thuật + Vẽ hình, Tầm 30~90s)';
+  $('tr-err').textContent = '';
+  const r = await call('translate.generate', { text, sizeMode: $('tr-size-mode').value });
+  TR_BUSY = false;
+  btn.disabled = false;
+  btn.textContent = old;
+  if (!r.ok) {
+    $('tr-err').textContent = r.error || 'Lỗi lạ';
+    toast('Gãy giữa chừng', 'bad');
+    return;
+  }
+  renderTranslateResult(r.data || {});
+  toast('Xong xuôi');
+};
+
+$('btn-tr-copy').onclick = async () => {
+  const el = $('tr-prompt');
+  if (!el || !el.value) { toast('Không có prompt nào để copy cả', 'bad'); return; }
+  try { await navigator.clipboard.writeText(el.value); toast('Prompt đã nằm trong Clipboard'); }
+  catch {
+    el.select();
+    try { document.execCommand('copy'); toast('Prompt đã nằm trong Clipboard'); }
+    catch { toast('Copy hụt rồi, xin phiền bôi đen rồi bấm Ctrl+C đi nhé', 'bad'); }
+  }
+};
+
+/* -- Xuất ảnh từ ngữ cảnh -- */
+$('btn-ctx-test').onclick = async () => {
+  const btn = $('btn-ctx-test');
+  btn.disabled = true;
+  $('ctx-test-err').textContent = 'Đang dò đường...';
+  const r = await call('ctx.test');
+  btn.disabled = false;
+  if (r.ok) {
+    $('ctx-test-err').textContent = '';
+    toast('Đường mạng trơn tru: ' + ((r.data && r.data.message) || ''));
+  } else {
+    $('ctx-test-err').textContent = r.error || 'Lỗi kì lạ';
+    toast('Dò đường thất bại', 'bad');
+  }
+};
+
+let CTX_BUSY = false;
+$('btn-ctx-gen').onclick = async () => {
+  if (CTX_BUSY) return;
+  const btn = $('btn-ctx-gen');
+  CTX_BUSY = true;
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = 'Đang tiêu hóa... (Phân tích + Vẽ hình, khoảng 30~120s)';
+  $('ctx-result').innerHTML = '<div class="empty">Đang rã đông (Phân tích) câu trả lời cuối cùng của nhân vật...</div>';
+  const r = await call('ctx.generate');
+  CTX_BUSY = false;
+  btn.disabled = false;
+  btn.textContent = old;
+  if (!r.ok) {
+    $('ctx-result').innerHTML = '<div class="err">' + esc(r.error || 'Lỗi khó hiểu') + '</div>';
+    toast('Xuất ảnh từ ngữ cảnh sụp hầm', 'bad');
+    return;
+  }
+  const d = r.data || {};
+  const list = (d.prompts || []).map((p, i) => '<div class="kv"><span class="k">Prompt của tấm thứ ' + (i + 1) + '</span><span class="v">' + esc(p) + '</span></div>').join('');
+  $('ctx-result').innerHTML =
+    '<div class="muted" style="font-size:12.5px;line-height:1.7">Đã chèn tại chỗ (in-place) ' + esc(d.count) + ' tấm ảnh minh họa vào bên trong dòng ' + esc(d.messageId) + ' của đoạn chat.</div>' +
+    (list || '');
+  toast('Đã nhét vào ' + d.count + ' bức ảnh minh họa');
+  await refreshOverview();
+};
+
+$('btn-ctx-reload').onclick = async () => { await loadAll(); toast('Đã tải lại'); };
+$('btn-prompt-reload').onclick = async () => { await loadAll(); toast('Đã tải lại'); };
+
+/* -- Test kết nối / Copy quy tắc / Khôi phục Default / Load lại -- */
+$('btn-test').onclick = async () => {
+  const btn = $('btn-test');
+  btn.disabled = true;
+  $('test-err').textContent = 'Đang bắt tay...';
+  const r = await call('test');
+  btn.disabled = false;
+  if (r.ok) {
+    $('test-err').textContent = '';
+    toast('Thông đường: ' + (r.data && r.data.message ? r.data.message : ''));
+  } else {
+    $('test-err').textContent = (r.error || 'Gãy kết nối') +
+      '　—　Lưu ý: Một vài cái NAI Gateway nó gác cổng gắt gao chỉ nhả mỗi luồng Vẽ hình, chặn tiệt đường ống check Subcription (Gói cước); Chỗ này bị Fail chưa chắc là cổng này không ăn thua đâu, cứ xuất ảnh mà thấy ra là xài được tuốt.';
+    toast('Kết nối rụng', 'bad');
+  }
+};
+
+$('btn-copy-rule').onclick = async () => {
+  const text = $('f-rule').value || '';
+  try { await navigator.clipboard.writeText(text); toast('Quy tắc đã yên vị trong Clipboard'); }
+  catch {
+    $('f-rule').select();
+    try { document.execCommand('copy'); toast('Quy tắc đã yên vị trong Clipboard'); }
+    catch { toast('Copy tịt ngòi, xin phiền bôi đen rồi bấm Ctrl+C đi nhé', 'bad'); }
+  }
+};
+
+$('btn-reset').onclick = async () => {
+  if (!window.confirm('Chắc chắn muốn xóa bàn làm lại về mặc định xuất xưởng chứ? Toàn bộ các thông số cấu hình mồ hôi nước mắt bây giờ sẽ bị reset sạch (Tất nhiên là mấy bức tranh nãy giờ vẽ ở ngoài chat thì không bị bốc hơi đâu).')) return;
+  const r = await call('settings.reset');
+  if (!r.ok) { toast('Reset hụt: ' + (r.error || ''), 'bad'); return; }
+  fillForm(r.data.settings);
+  await refreshRule();
+  await refreshOverview();
+  toast('Đã tẩy trắng về mặc định');
+};
+
+$('btn-reload-settings').onclick = async () => { await loadAll(); toast('Đã tải lại'); };
+
+async function refreshRule() {
+  const r = await call('rule');
+  if (r.ok) $('f-rule').value = (r.data && r.data.rule) || '';
+}
+
+async function loadAll() {
+  const r = await call('settings.get');
+  if (!r.ok) { toast('Đọc cấu hình (Setting) fail: ' + (r.error || ''), 'bad'); return; }
+  fillForm(r.data.settings);
+  await refreshRule();
+  await refreshOverview();
+}
+
+/* -- Tự động boot -- */
+(async function boot() {
+  // Cầu nối API (Bridge API) đôi khi lề mề cóng hơn cả cái trang Panel: Ráng đợi một xíu rồi thử chọt lại thêm mấy lần nữa cho đỡ hiểu lầm là nó "Không kết nối được".
+  for (let i = 0; i < 10 && typeof API !== 'function'; i++) {
+    await new Promise(r => setTimeout(r, 200));
+    API = resolveApi();
+  }
+  if (typeof API !== 'function') {
+    $('bridge-warn').classList.add('show');
+    $('pill').className = 'pill off';
+    kvSet('pill-text', 'Extension chưa nối cáp');
+    document.querySelectorAll('.sw').forEach(el => el.classList.add('dis'));
+    // Ép khóa (Disable) luôn mấy cái control chuyên đi ghi đè dữ liệu, mấy cái tab menu lân la bên hông thì chừa lại để dòm
+    document.querySelectorAll('.content input, .content textarea, .content .btn').forEach(el => { el.disabled = true; });
+    $('thumbs-wrap').innerHTML = '<div class="empty">Bảng điều khiển không có thực quyền trong tay, đành móm mỏ không lấy nổi thông số.</div>';
+    return;
+  }
+  await loadAll();
+  // Khung cảnh hội thoại (Context) diễn biến không ngừng lúc mở bảng, nên cái trang Tổng quan phải được refesh định kỳ (Chỉ read-only thôi)
+  setInterval(refreshOverview, 8000);
+})();
+</script>
+</body>
+</html>

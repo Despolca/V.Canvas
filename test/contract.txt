@@ -1,0 +1,4 @@
+Bảng điều khiển gọi: ctx.generate, ctx.test, history.clear, history.list, rule, settings.get, settings.patch, settings.reset, state, test, translate.generate
+Bridge triển khai: ctx.generate, ctx.test, history.clear, history.list, rule, settings.get, settings.patch, settings.reset, state, test, translate.generate
+Trong cài đặt có tổng cộng 31 trường; Bảng điều khiển chưa bao phủ (cover): (Không có)
+RESULT: Khế ước action đồng nhất

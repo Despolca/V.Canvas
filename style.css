@@ -1,0 +1,381 @@
+/* V.Canvas · Style
+ *
+ * Gồm 6 phần:
+ *   1) Yêu cầu cứng: Ảnh minh họa trong tin nhắn phải đứng một mình một dòng, xếp dọc;
+ *   2) Placeholder tại chỗ trong lúc đang vẽ;
+ *   3) Thẻ tiến độ xuất ảnh lơ lửng (Trạng thái thường trú trong lúc phân tích / vẽ, có nút Chấm dứt);
+ *   4) Overlay prompt của ảnh minh họa (Click vào ảnh để xem nội dung thẻ đánh dấu tương ứng của ảnh đó);
+ *   5) Ngăn kéo extension (Cực kỳ tối giản);
+ *   6) Overlay bảng điều khiển quản lý.
+ *
+ * Chú ý: Bảng điều khiển quản lý không đi theo theme của SillyTavern, bảng điều khiển có sẵn trọn bộ style màu tối riêng (Xem inline CSS trong panel.html),
+ *       ở đây chỉ chịu trách nhiệm lớp vỏ overlay bên ngoài.
+ */
+
+/* -- 1. Ảnh minh họa trong chính văn: Đứng một mình một dòng (Hạng mục nghiệm thu: Chữ -> Ảnh -> Chữ xếp dọc, không trôi dạt (float), chữ không bao quanh ảnh) -- */
+.mes_text img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 8px auto;
+}
+
+/* Bổ sung bo góc cho ảnh minh họa do chính extension chèn vào */
+.mes_text p > img {
+    border-radius: 6px;
+}
+
+/* -- 2. Placeholder tại chỗ trong lúc đang vẽ --
+   Thay thế tại chỗ tag ILLUST trong chính văn bằng dòng nhắc nhở này. Chỉ sửa đổi DOM, không ghi đĩa (persist),
+   nhờ vậy nếu tải lại trang hoặc thất bại thì chữ "Đang vẽ" sẽ không bị lưu lại trong lịch sử trò chuyện. */
+.v_canvas_placeholder {
+    display: block;
+    margin: 8px 0;
+    padding: 8px 12px;
+    border-left: 3px solid var(--SmartThemeQuoteColor, #6a9fda);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor, rgba(127, 127, 127, 0.08));
+    font-size: 0.92em;
+    opacity: 0.82;
+    animation: v_canvas_ph_pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes v_canvas_ph_pulse {
+    0%, 100% { opacity: 0.55; }
+    50%      { opacity: 0.95; }
+}
+
+/* -- 3. Thẻ tiến độ xuất ảnh lơ lửng --
+   Thường trú trong lúc phân tích / vẽ, hiển thị giai đoạn hiện tại và kèm theo nút "Chấm dứt".
+   Chỉ nằm trên DOM, không ghi vào lịch sử trò chuyện; Đi theo biến theme của SillyTavern. */
+#v_canvas_progress {
+    position: fixed;
+    top: 64px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-12px);
+    z-index: 9997;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: min(560px, calc(100vw - 32px));
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(127, 127, 127, 0.35));
+    background: var(--SmartThemeBlurTintColor, rgba(30, 30, 34, 0.94));
+    color: var(--SmartThemeBodyColor, #e5e7eb);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+#v_canvas_progress.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+#v_canvas_progress .v_canvas_pg_mark {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: ui-monospace, Consolas, monospace;
+    color: #fff;
+    background: linear-gradient(135deg, #10b981, #22c55e);
+}
+
+#v_canvas_progress .v_canvas_pg_body {
+    flex: 1;
+    min-width: 0;
+}
+
+#v_canvas_progress .v_canvas_pg_title {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+#v_canvas_progress .v_canvas_pg_text {
+    margin-top: 2px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    opacity: 0.85;
+}
+
+#v_canvas_progress .v_canvas_pg_btn {
+    flex: none;
+}
+
+/* Đang diễn ra: Hiển thị chấm tròn nhấp nháy trước tiêu đề */
+#v_canvas_progress:not(.v_canvas_pg_done):not(.v_canvas_pg_err) .v_canvas_pg_title::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: v_canvas_pg_pulse 1.1s ease-in-out infinite;
+    vertical-align: middle;
+}
+
+#v_canvas_progress.v_canvas_pg_finishing .v_canvas_pg_title::before {
+    background: var(--SmartThemeQuoteColor, #d9a441);
+}
+
+#v_canvas_progress.v_canvas_pg_done {
+    border-color: rgba(34, 197, 94, 0.5);
+}
+
+#v_canvas_progress.v_canvas_pg_err {
+    border-color: rgba(239, 68, 68, 0.55);
+}
+
+#v_canvas_progress.v_canvas_pg_err .v_canvas_pg_text {
+    color: var(--SmartThemeQuoteColor, #f87171);
+}
+
+@keyframes v_canvas_pg_pulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.85); }
+    50%      { opacity: 1;    transform: scale(1); }
+}
+
+@media (max-width: 640px) {
+    #v_canvas_progress { top: 52px; padding: 10px 12px; }
+    #v_canvas_progress .v_canvas_pg_mark { display: none; }
+}
+
+/* -- 4. Overlay prompt của ảnh minh họa --
+   Khởi tạo on-demand khi click vào ảnh minh họa, đóng xong xóa luôn; Không ghi vào lịch sử trò chuyện, không tham gia vào luồng render. */
+#v_canvas_prompt_overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#v_canvas_prompt_overlay .v_canvas_prompt_box {
+    width: min(640px, 100%);
+    max-height: min(70vh, 620px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--SmartThemeBlurTintColor, #1f2937);
+    color: var(--SmartThemeBodyColor, #e5e7eb);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+#v_canvas_prompt_overlay .v_canvas_prompt_head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.35);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#v_canvas_prompt_overlay .v_canvas_prompt_body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px 16px 16px;
+}
+
+#v_canvas_prompt_overlay .v_canvas_prompt_section {
+    margin-top: 12px;
+}
+
+#v_canvas_prompt_overlay .v_canvas_prompt_lab {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 5px;
+}
+
+#v_canvas_prompt_overlay .v_canvas_prompt_text {
+    font-size: 13.5px;
+    line-height: 1.65;
+    word-break: break-word;
+    white-space: pre-wrap;
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: rgba(127, 127, 127, 0.12);
+}
+
+#v_canvas_prompt_overlay .v_canvas_prompt_text.mono {
+    font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+    font-size: 12.5px;
+}
+
+#v_canvas_prompt_overlay .v_canvas_prompt_none {
+    opacity: 0.55;
+}
+
+/* -- 5. Ngăn kéo extension (Chỉ chứa tên + phiên bản + một nút bấm) -- */
+#v_canvas_drawer .v_canvas_version {
+    font-size: 11px;
+    color: var(--SmartThemeBodyColor);
+    opacity: 0.6;
+    margin-left: 6px;
+    font-weight: 400;
+}
+
+#v_canvas_drawer .v_canvas_content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 6px;
+}
+
+#v_canvas_drawer .v_canvas_row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+#v_canvas_open_panel {
+    width: 100%;
+    justify-content: center;
+}
+
+/* -- 6. Overlay bảng điều khiển quản lý -- */
+#v_canvas_panel_overlay {
+    --vc-pad: 18px;
+    --vc-chrome: 30px;
+    --vc-gap: 8px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* Không thể dùng offset top/bottom hay chiều cao %: SillyTavern trên Mobile đã set thẻ body thành position: fixed,
+       trong Android Chromium, cả hai thông số này sẽ bị dịch thành chiều cao = 0, làm overlay bị bẹp dí, không thấy nội dung panel.
+       Dùng 100vh kết hợp giá trị pixel lấy bằng JS thì Mobile hay Desktop gì cũng lấy được chiều cao trọn màn hình. */
+    height: 100vh;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.78);
+    box-sizing: border-box;
+}
+
+/* Màn hình hẹp (Mobile): Overlay full màn hình, chỉ chừa lại 1 thanh thao tác */
+@media (max-width: 720px) {
+    #v_canvas_panel_overlay {
+        --vc-pad: 0px;
+        --vc-chrome: 44px;
+        --vc-gap: 0px;
+    }
+}
+
+#v_canvas_panel_overlay .v_canvas_panel_chrome {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--vc-chrome);
+    box-sizing: border-box;
+    padding: 0 var(--vc-pad);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+#v_canvas_panel_overlay .v_canvas_panel_title {
+    letter-spacing: 0.02em;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#v_canvas_panel_overlay .v_canvas_panel_actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+}
+
+#v_canvas_panel_overlay .v_canvas_panel_chrome .menu_button {
+    color: #fff;
+    white-space: nowrap;
+    flex: none;
+}
+
+@media (max-width: 720px) {
+    #v_canvas_panel_overlay .v_canvas_panel_chrome .menu_button {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+}
+
+#v_canvas_panel_iframe {
+    position: absolute;
+    top: calc(var(--vc-chrome) + var(--vc-gap));
+    left: var(--vc-pad);
+    /* iframe là một replaced element: width/height đặt là auto nó sẽ lùi về kích thước nội tại (intrinsic size) là 300x150,
+       kéo theo việc offset trái phải cũng bị vô hiệu, cho nên ở đây phải tự tính ra kích thước cụ thể. */
+    width: calc(100% - var(--vc-pad) * 2);
+    height: calc(100% - var(--vc-chrome) - var(--vc-gap) - var(--vc-pad));
+    border: none;
+    border-radius: 12px;
+    background: #0f172a;          /* Màu nền riêng của bảng điều khiển, tránh bị chớp trắng màn hình (white flash) ở khoảnh khắc load */
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+/* Gợi ý dự phòng (fallback) khi nhúng thất bại (Một số trình duyệt mobile và WebView trong app cấm iframe) */
+#v_canvas_panel_overlay #v_canvas_panel_fallback {
+    display: none;
+    position: absolute;
+    top: calc(var(--vc-chrome) + var(--vc-gap));
+    left: var(--vc-pad);
+    right: var(--vc-pad);
+    bottom: var(--vc-pad);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+    background: #0f172a;
+    border-radius: 12px;
+}
+
+#v_canvas_panel_overlay #v_canvas_panel_fallback.show {
+    display: flex;
+}
+
+#v_canvas_panel_overlay .v_canvas_panel_fallback_card {
+    max-width: 460px;
+    color: #e2e8f0;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+#v_canvas_panel_overlay .v_canvas_panel_fallback_card b {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 8px;
+}
+
+#v_canvas_panel_overlay .v_canvas_panel_fallback_card p {
+    margin: 0 0 14px;
+    color: #94a3b8;
+}
