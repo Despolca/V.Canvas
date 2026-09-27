@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi-VN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>V.Canvas</title>
 <style>
-/* Theme tối, độc lập với theme của SillyTavern; Ngôn ngữ thiết kế giữ đồng nhất với bảng quản lý của V.Adapter. */
+/* Theme tối, độc lập với theme của SillyTavern; Ngôn ngữ thiết kế đồng nhất với bảng quản lý V.Adapter. */
 :root{
   --bg:#0f172a; --fg:hsl(210 20% 96%); --card:hsl(222 24% 12%);
   --primary:#10b981; --primary-fg:#03110a; --muted:hsl(222 15% 20%);
@@ -89,6 +89,11 @@ input[type=text],input[type=password],input[type=number],select,textarea{width:1
 textarea{resize:vertical;line-height:1.6}
 input:focus,select:focus,textarea:focus{border-color:hsl(152 65% 45% / .6);box-shadow:0 0 0 3px hsl(152 65% 45% / .12)}
 input[type=number]{-moz-appearance:textfield}
+/* Khung nhập secret key: Ô input mặc định ẩn chữ, nút bên phải dùng để bật/tắt hiển thị */
+.secret-wrap{position:relative;display:block}
+.secret-wrap input{padding-right:66px}
+.secret-toggle{position:absolute;top:50%;right:6px;transform:translateY(-50%);padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--muted);color:var(--muted-fg);font-size:11.5px;cursor:pointer;font-family:inherit}
+.secret-toggle:hover{color:var(--fg);filter:brightness(1.15)}
 .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:8px;border:1px solid var(--border);background:var(--muted);color:var(--fg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:filter .15s,opacity .15s}
 .btn:hover{filter:brightness(1.15)}
 .btn:disabled{opacity:.55;cursor:not-allowed}
@@ -104,7 +109,7 @@ input[type=number]{-moz-appearance:textfield}
 .code{display:block;padding:8px 10px;border-radius:8px;background:hsl(222 26% 8%);border:1px solid var(--border);font-size:12px;word-break:break-all}
 .muted{color:var(--muted-fg)}
 .err{color:var(--danger);font-size:12.5px;line-height:1.6;word-break:break-word}
-/* Hàng công tắc (Thêm mới cho bảng điều khiển này, kế thừa cùng bộ màu) */
+/* Dòng công tắc (Mới thêm ở bảng quản lý này, dùng chung một bộ màu) */
 .switch-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px dashed hsl(222 14% 22% / .7)}
 .switch-row:last-child{border-bottom:none}
 .switch-row .sr-text{flex:1;min-width:0}
@@ -123,10 +128,10 @@ input[type=number]{-moz-appearance:textfield}
 .thumb .tb-meta b{color:var(--fg);font-weight:600}
 .tb-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:700;color:var(--warning);background:hsl(38 92% 50% / .12);border:1px solid hsl(38 92% 50% / .3)}
 .empty{padding:26px 0;text-align:center;font-size:12.5px;color:var(--muted-fg);line-height:1.7}
-/* Placeholder hiển thị khi ảnh load thất bại: Đính kèm luôn địa chỉ gốc để tiện bắt bệnh do đường dẫn hay do file */
+/* Placeholder nhìn thấy được khi ảnh load thất bại: Kèm theo địa chỉ gốc, tiện cho việc phán đoán trực tiếp xem là do đường dẫn hay do file */
 .img-broken{padding:12px;font-size:11.5px;line-height:1.6;color:var(--danger);background:hsl(0 72% 58% / .08);border:1px dashed hsl(0 72% 58% / .35);border-radius:8px;word-break:break-all}
 .img-broken b{display:block;margin-bottom:4px;font-size:12.5px}
-/* Kết quả xuất ảnh từ bản dịch */
+/* Kết quả dịch thuật xuất ảnh */
 .tr-preview{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:hsl(222 26% 9% / .6);display:flex;justify-content:center}
 .tr-preview img{display:block;max-width:100%;max-height:56vh;height:auto}
 /* toast */
@@ -134,10 +139,22 @@ input[type=number]{-moz-appearance:textfield}
 .toast{padding:11px 15px;border-radius:10px;border:1px solid var(--border);background:hsl(222 24% 12% / .97);font-size:13px;max-width:380px;box-shadow:0 12px 30px rgb(0 0 0 / .35);line-height:1.6}
 .toast.ok{border-color:hsl(142 71% 45% / .45)}
 .toast.bad{border-color:hsl(0 72% 58% / .45)}
-/* Bridge self-test thất bại */
+/* Tự kiểm tra cầu nối thất bại */
 #bridge-warn{display:none;margin:14px 0 0;padding:14px 16px;border-radius:10px;border:1px solid hsl(0 72% 58% / .45);background:hsl(0 72% 58% / .1);color:var(--fg);font-size:13px;line-height:1.7}
 #bridge-warn.show{display:block}
 #bridge-warn b{color:var(--danger)}
+/* Danh sách chuỗi họa sĩ: Mỗi mục là một khối nhỏ độc lập (Tên + Nội dung + Xóa), render lại toàn bộ, do đó dùng ủy quyền sự kiện (event delegation) để gắn listener */
+.artist-item{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.artist-item:first-child{margin-top:8px}
+.artist-head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.artist-head input{flex:1;min-width:0}
+.artist-item textarea{width:100%;resize:vertical}
+/* Khối giải thích cần người dùng nhìn rõ. Cỡ chữ giống thân bài là 14px, giãn dòng rộng hơn - Người dùng yêu cầu rõ ràng là "phải nhìn thật rõ" */
+.notice{margin-bottom:16px;padding:16px 18px;border-radius:10px;border:1px solid hsl(200 80% 55% / .4);background:hsl(200 80% 55% / .09);font-size:14px;line-height:1.9}
+.notice:last-child{margin-bottom:0}
+.notice b{color:var(--info)}
+.notice.warn{border-color:hsl(38 92% 50% / .45);background:hsl(38 92% 50% / .09)}
+.notice.warn b{color:var(--warning)}
 </style>
 </head>
 <body>
@@ -153,10 +170,10 @@ input[type=number]{-moz-appearance:textfield}
     </div>
     <nav class="sidebar-nav">
       <button class="nav-btn active" data-page="overview">Tổng quan</button>
-      <button class="nav-btn" data-page="history">Lịch sử sinh ảnh</button>
+      <button class="nav-btn" data-page="history">Lịch sử tạo ảnh</button>
       <button class="nav-btn" data-page="prompt">Prompt</button>
-      <button class="nav-btn" data-page="translate">Xuất ảnh từ bản dịch</button>
-      <button class="nav-btn" data-page="context">Xuất ảnh từ ngữ cảnh</button>
+      <button class="nav-btn" data-page="translate">Dịch thuật xuất ảnh</button>
+      <button class="nav-btn" data-page="context">Xuất ảnh theo context</button>
       <button class="nav-btn" data-page="settings">Cài đặt</button>
     </nav>
     <div class="sidebar-foot">
@@ -177,52 +194,52 @@ input[type=number]{-moz-appearance:textfield}
     <div class="content">
 
       <div id="bridge-warn">
-        <b>Chưa kết nối với extension, bảng điều khiển hiện không có quyền kiểm soát.</b><br>
-        Bảng điều khiển chỉ là giao diện frontend, cấu hình thực tế nằm bên phía SillyTavern. Vui lòng đóng bảng điều khiển này lại, F5 lại trang SillyTavern rồi mở lên lại.
-        (Nếu lỗi cứ lặp lại, nghĩa là extension đã load thất bại; Vui lòng check console của trình duyệt xem có dòng báo lỗi nào bắt đầu bằng tiền tố <span class="mono">[V.Canvas]</span> không.)
+        <b>Chưa kết nối đến extension, bảng quản lý hiện tại không có quyền điều khiển.</b><br>
+        Bảng quản lý chỉ là giao diện front-end, cài đặt thực tế nằm bên phía SillyTavern. Vui lòng đóng bảng quản lý này, tải lại trang SillyTavern rồi mở lại.
+        (Nếu hiện tượng này lặp lại nhiều lần, có thể extension đã load thất bại; Hãy kiểm tra log báo lỗi có tiền tố <span class="mono">[V.Canvas]</span> trong console của trình duyệt.)
       </div>
 
       <!-- -- Tổng quan -- -->
       <section class="page active" id="page-overview">
         <div class="page-head">
           <h1>Tổng quan</h1>
-          <p>Trạng thái plugin, cấu hình tuyến trên hiện tại và các hình ảnh đã sinh trong phiên làm việc này. Mọi thay đổi sẽ được ghi thẳng vào SillyTavern (Sửa data -> Refresh giao diện -> Lưu đĩa).</p>
+          <p>Trạng thái plugin, tuyến trên hiện tại và các hình minh họa đã tạo trong phiên này. Mọi thay đổi đều ghi trực tiếp vào SillyTavern (Sửa dữ liệu -> Làm mới giao diện -> Lưu trữ persistence).</p>
         </div>
 
         <div class="grid c3">
-          <div class="stat" id="stat-enabled-box"><div class="v" id="stat-enabled">-</div><div class="k">Tự động vẽ hình</div></div>
+          <div class="stat" id="stat-enabled-box"><div class="v" id="stat-enabled">-</div><div class="k">Tự động vẽ minh họa</div></div>
           <div class="stat"><div class="v" id="stat-upstream">-</div><div class="k">Tuyến trên hiện tại</div></div>
-          <div class="stat"><div class="v" id="stat-images">-</div><div class="k">Ảnh đã xuất trong phiên này</div></div>
+          <div class="stat"><div class="v" id="stat-images">-</div><div class="k">Đã xuất ảnh phiên này</div></div>
         </div>
 
         <div class="grid c2">
           <div class="card">
-            <div class="card-head"><div><div class="card-title">Tuyến trên (Upstream)</div><div class="card-desc">Địa chỉ và thông số của dịch vụ xuất ảnh</div></div></div>
+            <div class="card-head"><div><div class="card-title">Tuyến trên</div><div class="card-desc">Địa chỉ và thông số của service xuất ảnh</div></div></div>
             <div class="card-body">
-              <div class="kv"><span class="k">Địa chỉ dịch vụ NAI</span><span class="v mono" id="ov-base">-</span></div>
+              <div class="kv"><span class="k">Địa chỉ service NAI</span><span class="v mono" id="ov-base">-</span></div>
               <div class="kv"><span class="k">API Key</span><span class="v mono" id="ov-key">-</span></div>
-              <div class="kv"><span class="k">Tên Model</span><span class="v mono" id="ov-model">-</span></div>
+              <div class="kv"><span class="k">Tên model</span><span class="v mono" id="ov-model">-</span></div>
               <div class="kv"><span class="k">Độ phân giải / Số bước / CFG</span><span class="v mono" id="ov-params">-</span></div>
-              <div class="kv"><span class="k">Nội dung gửi đi</span><span class="v" id="ov-prompt-format">-</span></div>
+              <div class="kv"><span class="k">Nội dung gửi cho tuyến trên</span><span class="v" id="ov-prompt-format">-</span></div>
             </div>
           </div>
 
           <div class="card">
             <div class="card-head"><div><div class="card-title">Quy tắc kích hoạt</div><div class="card-desc">Khi nào sẽ tự động xuất ảnh</div></div></div>
             <div class="card-body">
-              <div class="kv"><span class="k">Mỗi câu trả lời tối đa</span><span class="v" id="ov-max">-</span></div>
-              <div class="kv"><span class="k">Bơm (Inject) quy tắc</span><span class="v" id="ov-inject">-</span></div>
-              <div class="kv"><span class="k">Xuất ảnh từ ngữ cảnh</span><span class="v" id="ov-ctx">-</span></div>
-              <div class="kv"><span class="k">Loại bỏ tag trong chính văn</span><span class="v" id="ov-strip">-</span></div>
-              <div class="kv"><span class="k">Cấp lại ảnh khi chuyển câu trả lời (swipe)</span><span class="v" id="ov-swipe">-</span></div>
-              <div class="kv"><span class="k">Loại tin nhắn bỏ qua</span><span class="v mono" id="ov-exclude">-</span></div>
+              <div class="kv"><span class="k">Tối đa mỗi câu trả lời</span><span class="v" id="ov-max">-</span></div>
+              <div class="kv"><span class="k">Tiêm quy tắc</span><span class="v" id="ov-inject">-</span></div>
+              <div class="kv"><span class="k">Xuất ảnh theo context</span><span class="v" id="ov-ctx">-</span></div>
+              <div class="kv"><span class="k">Loại bỏ tag trong thân bài</span><span class="v" id="ov-strip">-</span></div>
+              <div class="kv"><span class="k">Tạo lại ảnh khi swipe đổi câu trả lời</span><span class="v" id="ov-swipe">-</span></div>
+              <div class="kv"><span class="k">Loại tin nhắn bị bỏ qua</span><span class="v mono" id="ov-exclude">-</span></div>
             </div>
           </div>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Ảnh minh họa đã sinh trong đoạn chat này</div><div class="card-desc">Đọc trực tiếp từ lịch sử tin nhắn hiện tại, không qua bộ nhớ đệm (cache)</div></div>
+            <div><div class="card-title">Hình minh họa đã tạo trong cuộc trò chuyện này</div><div class="card-desc">Đọc trực tiếp từ tin nhắn trong phiên hiện tại, không dùng cache</div></div>
             <button class="btn sm" id="btn-refresh-overview">Làm mới</button>
           </div>
           <div class="card-body">
@@ -231,11 +248,11 @@ input[type=number]{-moz-appearance:textfield}
         </div>
       </section>
 
-      <!-- -- Lịch sử sinh ảnh -- -->
+      <!-- -- Lịch sử tạo ảnh -- -->
       <section class="page" id="page-history">
         <div class="page-head">
-          <h1>Lịch sử sinh ảnh</h1>
-          <p>Tất cả ảnh minh họa plugin này đã từng xuất ra, xếp lùi theo thứ tự thời gian. Lịch sử được lưu trong cài đặt của SillyTavern, cho dù có chuyển qua đoạn chat khác, đổi thẻ nhân vật hay F5 lại trang vẫn có thể xem lại; Có thể click vào ảnh để mở ảnh gốc trong tab mới.</p>
+          <h1>Lịch sử tạo ảnh</h1>
+          <p>Toàn bộ hình minh họa do plugin này tạo ra, sắp xếp theo thời gian nghịch đảo. Lịch sử được lưu trong cài đặt của SillyTavern, sau khi chuyển chat, đổi nhân vật hoặc mở lại SillyTavern vẫn có thể tra cứu; Click vào ảnh để mở ảnh gốc ở tab mới.</p>
         </div>
 
         <div class="card">
@@ -243,7 +260,7 @@ input[type=number]{-moz-appearance:textfield}
             <div><div class="card-title">Toàn bộ lịch sử</div><div class="card-desc" id="history-count">Đang đọc...</div></div>
             <div class="row">
               <button class="btn sm" id="btn-history-refresh">Làm mới</button>
-              <button class="btn sm danger" id="btn-history-clear">Xóa sạch lịch sử</button>
+              <button class="btn sm danger" id="btn-history-clear">Xóa lịch sử</button>
             </div>
           </div>
           <div class="card-body">
@@ -257,123 +274,168 @@ input[type=number]{-moz-appearance:textfield}
         <div class="page-head">
           <h1>Prompt</h1>
           <p>
-            Nội dung điền ở đây sẽ được kẹp cùng chính văn gửi cho model phân tích của tính năng "Xuất ảnh từ ngữ cảnh", làm căn cứ để model này soạn ra prompt hình ảnh.
-            Có thể bỏ trống cả 3 ô, không giới hạn độ dài; Khi bỏ trống model phân tích sẽ tự định đoạt dựa theo tác phẩm và chính văn.
+            Nội dung điền ở đây sẽ được gửi cùng thân bài cho model phân tích của "Xuất ảnh theo context", làm căn cứ để nó viết ra prompt xuất ảnh.
+            Cả ba mục đều có thể để trống, không giới hạn độ dài; Khi để trống, model phân tích sẽ tự đánh giá dựa trên tác phẩm và thân bài.
           </p>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Prompt chất lượng tích cực</div><div class="card-desc">Yêu cầu về chất lượng và các yếu tố hiển thị trong khung hình</div></div>
+            <div><div class="card-title">Prompt chất lượng (Positive)</div><div class="card-desc">Yêu cầu về chất lượng và các yếu tố hình ảnh</div></div>
             <button class="btn sm" id="btn-prompt-reload">Tải lại</button>
           </div>
           <div class="card-body">
             <label class="field">
-              <span class="lab">Prompt chất lượng tích cực</span>
-              <textarea id="f-ctx_quality" rows="10" placeholder="Bỏ trống = Giao cho model phân tích tự định đoạt. Có thể viết bằng ngôn ngữ tự nhiên, hoặc nhãn Danbooru tiếng Anh, ví dụ: masterpiece, best quality, ultra detailed"></textarea>
+              <span class="lab">Prompt chất lượng (Positive)</span>
+              <textarea id="f-ctx_quality" rows="10" placeholder="Để trống = Do model phân tích tự quyết định. Có thể viết ngôn ngữ tự nhiên hoặc thẻ Danbooru tiếng Anh, ví dụ: masterpiece, best quality, ultra detailed"></textarea>
               <span class="hint">
-                Truyền xuống dưới dạng mệnh lệnh ép buộc: Các đoạn mô tả và nhãn do model phân tích soạn ra bắt buộc phải thể hiện đúng chất lượng và các yếu tố được yêu cầu ở đây,
-                từng câu chữ và nhãn trong ô này sẽ được chép lại y xì đúc. Nếu cần bổ sung thêm chi tiết thì model phân tích sẽ tự thêm thắt,
-                nhưng phần được thêm không được phép xung đột với các yêu cầu có sẵn ở đây.
+                Gửi xuống dưới dạng ràng buộc bắt buộc: Mô tả và tag do model phân tích sinh ra phải thể hiện chất lượng và yếu tố được yêu cầu ở đây,
+                từ ngữ và tag trong này sẽ được dùng trực tiếp. Khi cần bổ sung chi tiết, model phân tích sẽ tự hoàn thiện,
+                nội dung bổ sung không được mâu thuẫn với các yêu cầu đã có ở đây.
               </span>
             </label>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Prompt phủ định (Negative Prompt)</div><div class="card-desc">Những nội dung cần né tránh</div></div></div>
+          <div class="card-head"><div><div class="card-title">Prompt tiêu cực (Negative)</div><div class="card-desc">Nội dung cần né tránh</div></div></div>
           <div class="card-body">
             <label class="field">
-              <span class="lab">Prompt phủ định</span>
-              <textarea id="f-ctx_negative" rows="8" placeholder="Bỏ trống = Không cài đặt nội dung loại trừ. Ví dụ: lowres, bad anatomy, watermark, modern clothing"></textarea>
+              <span class="lab">Prompt tiêu cực (Negative)</span>
+              <textarea id="f-ctx_negative" rows="8" placeholder="Để trống = Không đặt mục loại trừ. Ví dụ: lowres, bad anatomy, watermark, modern clothing"></textarea>
               <span class="hint">
-                Truyền xuống dưới dạng hạng mục loại trừ: Những nội dung được liệt kê trong này tuyệt đối không được xuất hiện trong đoạn mô tả hay đoạn nhãn do model phân tích nhả ra.
-                Cài đặt ở đây chỉ áp dụng cho nhánh "Xuất ảnh từ ngữ cảnh"; Còn negative prompt gửi thẳng cho model xuất ảnh thì nằm ở ô "Tham số xuất ảnh" trong trang "Cài đặt".
+                Gửi xuống dưới dạng mục loại trừ: Nội dung liệt kê trong này không được phép xuất hiện trong mô tả và tag do model phân tích sinh ra.
+                Chỗ này chỉ có tác dụng đối với luồng xuất ảnh theo context; Từ tiêu cực gửi trực tiếp cho tuyến trên xuất ảnh được cấu hình ở mục "Thông số xuất ảnh" trong trang "Cài đặt".
               </span>
             </label>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Phong cách mỹ thuật (Art style)</div><div class="card-desc">Yêu cầu về phong cách nét vẽ</div></div></div>
+          <div class="card-head"><div><div class="card-title">Phong cách vẽ</div><div class="card-desc">Yêu cầu về phong cách mỹ thuật</div></div></div>
           <div class="card-body">
             <label class="field">
-              <span class="lab">Phong cách mỹ thuật</span>
-              <textarea id="f-ctx_style" rows="8" placeholder="Bỏ trống = Do model phân tích tự phán đoán dựa theo tác phẩm; Ví dụ: Phong cách Anime Nhật Bản Cel-shading, Thick painting, Tông màu ấm"></textarea>
+              <span class="lab">Phong cách vẽ</span>
+              <textarea id="f-ctx_style" rows="8" placeholder="Để trống = Do model phân tích tự đánh giá theo tác phẩm; VD: Phong cách anime Nhật Bản celluloid, vẽ dày (thick impasto), tông màu ấm"></textarea>
               <span class="hint">
-                Một khi đã điền thì sẽ đóng đinh làm art style cuối cùng, model phân tích sẽ không dám thay thế bằng phong cách mà nó tự suy diễn nữa.
-                Có thể ghi rõ trường phái hội họa, nét vẽ, khuynh hướng màu sắc và chất liệu thời đại, miêu tả càng cụ thể thì hình ảnh xuất ra càng ổn định.
-                Nhân vật và trang phục thì không cần chỉ định ở đây -- Model phân tích sẽ tự đọc hiểu từ chính văn và phần hội thoại trước đó.
+                Sau khi điền sẽ được dùng làm phong cách vẽ cuối cùng, model phân tích không thay thế bằng phong cách do nó tự đánh giá nữa.
+                Có thể viết rõ trường phái phong cách, nét vẽ, khuynh hướng màu sắc và cảm giác thời đại, mô tả càng chi tiết, hình ảnh càng ổn định.
+                Không cần chỉ định nhân vật và trang phục ở đây - Do model phân tích phán đoán dựa trên thân bài và phần trước.
               </span>
             </label>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Từ khóa phá giới hạn / Jailbreak (Tùy chọn)</div><div class="card-desc">Dùng khi model phân tích hoặc tuyến trên xuất ảnh từ chối vẽ các nội dung máu me / người lớn; Hai model này có nội dung phá giới hạn khác nhau, cho nên được tách thành hai ô</div></div></div>
+          <div class="card-head"><div><div class="card-title">Từ phá giới hạn (Jailbreak - Tùy chọn)</div><div class="card-desc">Dùng khi model phân tích hoặc tuyến trên xuất ảnh từ chối nội dung bạo lực / người lớn; Nội dung phá giới hạn của hai model là khác nhau nên được chia làm hai cột</div></div></div>
           <div class="card-body">
             <label class="field">
-              <span class="lab">Từ khóa phá giới hạn cho Model Phân Tích (Xuất ảnh từ ngữ cảnh)</span>
-              <textarea id="f-jb_llm" rows="8" placeholder="Bỏ trống = Hoàn toàn không kích hoạt. Dùng khi chính văn có chứa nội dung máu me, người lớn, để tránh việc model phân tích bị ngợp và từ chối nhả prompt."></textarea>
+              <span class="lab">Từ phá giới hạn cho Model phân tích (Xuất ảnh theo context)</span>
+              <textarea id="f-jb_llm" rows="8" placeholder="Để trống = Hoàn toàn không có tác dụng. Dùng khi thân bài chứa nội dung bạo lực, người lớn, nhằm tránh việc model phân tích từ chối trả lời prompt xuất ảnh."></textarea>
               <span class="hint">
-                Một khi đã điền sẽ được nhồi y nguyên vào <b>Mỗi một request</b> gửi cho model phân tích (Nhồi trước cả chính văn). Đối tượng nhắm tới là để trị chứng "Từ chối trả lời" của cái "Model đọc text" --
-                Nội dung ô này thường là một đoạn hướng dẫn bổ sung viết cho con AI đọc.
+                Sau khi điền sẽ được ghép nguyên trạng vào <b>mỗi request</b> của model phân tích (Trước thân bài). Nhắm vào việc "Model đọc văn bản" từ chối trả lời -
+                Hình thức nội dung thường là những giải thích bổ sung viết cho model đọc.
               </span>
             </label>
             <label class="field" style="margin-top:14px">
-              <span class="lab">Từ khóa phá giới hạn sinh ảnh (Tuyến trên xuất ảnh)</span>
-              <textarea id="f-jb_image" rows="8" placeholder="Bỏ trống = Hoàn toàn không kích hoạt. Dùng khi tuyến trên xuất ảnh từ chối vẽ một số khung hình nhất định."></textarea>
+              <span class="lab">Từ phá giới hạn xuất ảnh (Tuyến trên xuất ảnh)</span>
+              <textarea id="f-jb_image" rows="8" placeholder="Để trống = Hoàn toàn không có tác dụng. Dùng khi tuyến trên xuất ảnh từ chối tạo một số khung hình nào đó."></textarea>
               <span class="hint">
-                Một khi đã điền sẽ được nhồi y nguyên vào <b>Đầu của đoạn prompt xuất ảnh</b> (Luồng Tự động xuất ảnh hay Xuất ảnh từ bản dịch đều ăn).
-                Đối tượng nhắm tới là để lách bộ kiểm duyệt của cái "Model vẽ tranh / Proxy" -- Nội dung ô này thường là tag hoặc các tiền tố mô tả khung hình.
+                Sau khi điền sẽ được ghép nguyên trạng vào <b>phía trước cùng của prompt xuất ảnh</b> (Có tác dụng với cả Vẽ minh họa tự động và Dịch thuật xuất ảnh).
+                Bản chất của nó là một <b>tiền tố của prompt</b>, không phải chìa khóa vạn năng.
               </span>
             </label>
+            <div class="notice warn">
+              <b>Nó có thể phát huy tác dụng đến mức nào, hoàn toàn phụ thuộc vào việc "Từ chối" xảy ra ở tầng nào - Hãy nhìn cho rõ, đừng mong đợi nó chắc chắn sẽ gỡ được kiểm duyệt</b>
+              <br>· <b>Model tự từ chối trả lời</b> (Các model dựa trên căn chỉnh chỉ thị, ví dụ như model chat vẽ ảnh, model đa phương thức):
+              <b>Có cơ hội</b> bị prompt tác động - Đây là trường hợp duy nhất mà mục này thực sự có điểm phát huy tác dụng, nhưng <b>không đảm bảo thành công</b>.
+              <br>· <b>Bộ lọc của Diffusion Model</b> (Kết nối trực tiếp NAI chính thức / SD Local / ComfyUI):
+              Bản thân model sẽ không "Từ chối trả lời", thứ phát huy tác dụng là bộ lọc ở server hoặc bên cạnh sampler. Lách luật bằng từ ngữ đôi khi có hiệu quả;
+              nhưng nếu nó đánh chặn theo danh sách đen thẻ tag, thì nó nhìn vào thẻ tag của bạn, chứ không phải tiền tố bạn viết - Lúc này <b>có đổi từ ngữ thế nào cũng vô dụng</b>.
+              Ngoài ra, ComfyUI / SD Local thường vốn dĩ không có kiểm duyệt, <b>điền vào không có hại gì, nhưng cũng chẳng có ý nghĩa</b>.
+              <br>· <b>Lọc cứng cấp nền tảng</b> (Chính sách nội dung đi kèm Image API, hoặc phân loại an toàn lần 2 đối với kết quả xuất ảnh):
+              <b>Về cơ bản là vô dụng</b> - Request đã bị chặn ngay tại server, model còn chưa kịp sờ tới, viết prompt thế nào cũng không được cho qua.
+              <br><b>Vậy tại sao kết nối trực tiếp NAI chính thức "Không cần" mục này?</b>
+              Bởi vì <b>Diffusion Model không có khâu "Từ chối trả lời"</b> - Nó không hiểu ngôn ngữ, chỉ đơn thuần lấy mẫu và xuất ảnh theo prompt của bạn,
+              hoàn toàn không tồn tại cái phán đoán "Tôi không vẽ cái này" để bạn có thể thuyết phục; Bản thân gói đăng ký trả phí chính thức cũng cho phép nội dung người lớn.
+              Cho nên khi kết nối trực tiếp NAI, mục này về cơ bản là thừa thãi: Lỡ như có bị chặn thật, thì đó là <b>do bộ lọc hoặc trạm trung chuyển</b> làm,
+              đối sách là sửa từ ngữ hoặc đổi đường truyền, chứ không phải là "Phá giới hạn".
+              <br>Do đó định vị chính xác của mục này là "<b>Có cơ hội ảnh hưởng đến việc từ chối trả lời của tuyến trên</b>", xin hãy hiểu nó như một tiền tố prompt tùy chọn.
+              Thử lại nhiều lần còn có thể kích hoạt quản lý rủi ro của tuyến trên, <b>người dùng tự chịu rủi ro về tuân thủ và tài khoản</b>.
+            </div>
             <div class="muted" style="font-size:12px;line-height:1.65;margin-top:10px">
-              Plugin này không tích hợp sẵn bất kỳ nội dung nào, cả hai ô bỏ trống thì coi như tính năng này chưa hề tồn tại; Nội dung và mục đích sử dụng do người dùng tự điền và tự chịu trách nhiệm.
+              Plugin này không tích hợp sẵn bất kỳ nội dung nào, khi hai cột để trống thì hoàn toàn giống như chưa thêm chức năng này;
+              Việc điền nội dung gì và dùng vào mục đích gì do người dùng tự quyết định, người dùng cũng tự chịu rủi ro về việc tuân thủ dịch vụ tuyến trên và tài khoản.
             </div>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Phạm vi áp dụng và Phương thức Request</div><div class="card-desc">Ba ô này có hiệu lực khi nào</div></div></div>
+          <div class="card-head">
+            <div><div class="card-title">Chuỗi họa sĩ</div><div class="card-desc">Chỉ có tác dụng khi "Kết nối trực tiếp NAI chính thức / Gateway NAI"</div></div>
+            <button class="btn sm" id="btn-artist-add">Thêm một mục</button>
+          </div>
+          <div class="card-body">
+            <div class="notice">
+              <b>Tại sao chỉ một bộ phận người dùng mới xài tới</b>
+              Thứ mà hai luồng xuất ảnh nhận được vốn dĩ khác nhau hoàn toàn:
+              <br>· <b>Kết nối trực tiếp NovelAI chính thức / Gateway NAI</b> (Diffusion Model): Thứ gửi đi là <b>chuỗi thẻ tag</b>,
+              chuỗi họa sĩ được ghép vào trước tag hình ảnh, dùng để khóa tone màu phong cách của cả bức tranh.
+              <br>· <b>Thông qua V.Adapter (Tuyến trên định dạng OpenAI)</b>: Thứ gửi đi là <b>mô tả ngôn ngữ tự nhiên</b>,
+              hơn nữa hình ảnh là do <b>model tuyến trên tự vẽ xong rồi giao thành phẩm về cho bạn</b>, chứ không phải kiểu "lấy mẫu từng frame để vẽ theo prompt của bạn" như NAI.
+              Việc nhét tên họa sĩ vào một đoạn mô tả chỉ làm ô nhiễm mô tả, do đó luồng này <b>sẽ tự động bỏ qua chuỗi họa sĩ</b>.
+            </div>
+            <label class="field">
+              <span class="lab">Chuỗi họa sĩ đang sử dụng hiện tại</span>
+              <select id="f-active_artist"></select>
+              <span class="hint">Chọn "Không sử dụng" đồng nghĩa với việc hoàn toàn không ghép. Đổi xong thì lần xuất ảnh tiếp theo mới có hiệu lực - Hình đã vẽ rồi sẽ không vẽ lại.</span>
+            </label>
+            <div id="artist-list"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Phạm vi tác dụng và Phương thức request</div><div class="card-desc">Cách thức hoạt động của 3 cột Từ chất lượng / Từ tiêu cực / Phong cách vẽ ở bên trên</div></div></div>
           <div class="card-body">
             <div class="muted" style="font-size:12.5px;line-height:1.8">
-              Chỉ áp dụng cho luồng <b>Xuất ảnh từ ngữ cảnh</b>. Trong luồng Điều hướng bằng thẻ đánh dấu, prompt đã được model cốt truyện nhả thẳng vào trong
-              <span class="mono">[ILLUST: …]</span> của chính văn rồi, nên không có đi ngang qua chỗ này đâu.
-              <br>Mỗi một request quăng cho model phân tích đều là một cuộc đối thoại hoàn toàn độc lập, không mang theo lịch sử các lượt trước;
-              Do đó nội dung điền trong trang này sẽ được bưng đi gửi trọn vẹn theo từng request, đảm bảo không bị các luồng hội thoại sau này làm loãng hay ghi đè.
+              Ba cột này chỉ tác dụng lên <b>luồng Xuất ảnh theo context</b> - Chúng là yêu cầu gửi cho <b>Model phân tích</b>.
+              Trong luồng hoạt động bằng marker, prompt do model cốt truyện viết trực tiếp vào trong
+              <span class="mono">[ILLUST: ...]</span> của thân bài, không đi qua chỗ này.
+              <br>Mỗi request gửi cho model phân tích đều là một cuộc đối thoại đơn vòng (single-turn) hoàn toàn mới, không mang theo lịch sử các vòng trước;
+              Nội dung điền ở trang này sẽ được gửi đi trọn vẹn trong mỗi request, không bị pha loãng hay ghi đè bởi các cuộc đối thoại sau đó.
+              <br><b>Chuỗi họa sĩ không nằm trong ba cột này</b>: Nó được ghép vào prompt gửi cho <b>Tuyến trên xuất ảnh</b>, cách hoạt động xem thẻ card bên trên.
             </div>
           </div>
         </div>
       </section>
 
-      <!-- -- Xuất ảnh từ bản dịch -- -->
+      <!-- -- Dịch thuật xuất ảnh -- -->
       <section class="page" id="page-translate">
         <div class="page-head">
-          <h1>Xuất ảnh từ bản dịch</h1>
-          <p>Nhập một câu mô tả ngắn gọn, giao cho dịch vụ adapter mở rộng thành prompt hình ảnh hoàn chỉnh rồi tiến hành xuất ảnh. Trang này và chu trình tự động xuất ảnh hoàn toàn tách biệt nhau, kết quả chỉ hiển thị trong bảng điều khiển này, không ghi vào lịch sử chat.</p>
+          <h1>Dịch thuật xuất ảnh</h1>
+          <p>Nhập một câu mô tả ngắn gọn, service chuyển đổi sẽ mở rộng thành prompt hình ảnh hoàn chỉnh trước rồi mới xuất ảnh. Trang này và quy trình vẽ minh họa tự động hoàn toàn độc lập với nhau, kết quả chỉ hiển thị trong bảng quản lý, không ghi vào lịch sử trò chuyện.</p>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Dữ liệu đầu vào</div><div class="card-desc">Tên nhân vật, cụm từ tả bối cảnh đều nhận tuốt</div></div></div>
+          <div class="card-head"><div><div class="card-title">Đầu vào</div><div class="card-desc">Tên nhân vật, cụm từ tả cảnh đều được</div></div></div>
           <div class="card-body">
             <label class="field">
               <span class="lab">Mô tả ngắn gọn</span>
-              <textarea id="tr-text" rows="3" placeholder="Ví dụ: Nobi Tamako trong Doraemon / Thiếu nữ tóc bạc đứng dưới mưa trên con phố neon"></textarea>
+              <textarea id="tr-text" rows="3" placeholder="Ví dụ: Nobi Tamako trong Doraemon / Thiếu nữ tóc bạc trên con phố đèn neon đêm mưa"></textarea>
             </label>
             <label class="field">
-              <span class="lab">Độ phân giải</span>
+              <span class="lab">Kích thước</span>
               <select id="tr-size-mode">
-                <option value="auto">Tự động - Đi theo độ phân giải được khuyến nghị sau khi dịch</option>
-                <option value="fixed">Sử dụng tham số xuất ảnh ở trang "Cài đặt"</option>
+                <option value="auto">Tự động - Đi theo kích thước dịch thuật đề xuất</option>
+                <option value="fixed">Sử dụng thông số xuất ảnh ở trang "Cài đặt"</option>
               </select>
               <span class="hint">
-                Khâu mở rộng do dịch vụ adapter thi hành (Cái <span class="mono">expand=1</span> của V.Adapter), độ phân giải "Tự động" cũng được lấy từ kết quả sau khi mở rộng.
-                Nếu kết nối thẳng đến dịch vụ NAI official hoặc NAI Gateway, bước mở rộng sẽ không diễn ra, lúc này vui lòng chọn mục bên dưới.
+                Việc mở rộng do service chuyển đổi thực hiện (V.Adapter của <span class="mono">expand=1</span>), kích thước "Tự động" cũng được lấy từ kết quả mở rộng.
+                Nếu địa chỉ service kết nối trực tiếp NAI chính thức hoặc Gateway NAI, việc mở rộng sẽ không diễn ra, vui lòng chuyển sang dùng tùy chọn bên dưới.
               </span>
             </label>
             <div class="row">
-              <button class="btn primary" id="btn-tr-gen">Dịch và Xuất ảnh</button>
+              <button class="btn primary" id="btn-tr-gen">Dịch thuật và xuất ảnh</button>
             </div>
             <div class="err" id="tr-err"></div>
           </div>
@@ -381,38 +443,39 @@ input[type=number]{-moz-appearance:textfield}
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Kết quả</div><div class="card-desc">Chỉ hiển thị nội trong bảng điều khiển này</div></div>
+            <div><div class="card-title">Kết quả</div><div class="card-desc">Chỉ hiển thị trong bảng quản lý này</div></div>
             <button class="btn sm" id="btn-tr-copy">Copy prompt</button>
           </div>
           <div class="card-body">
-            <div id="tr-result"><div class="empty">Chưa có ảnh nào.</div></div>
+            <div id="tr-result"><div class="empty">Chưa tạo.</div></div>
           </div>
         </div>
       </section>
 
-      <!-- -- Xuất ảnh từ ngữ cảnh -- -->
+      <!-- -- Xuất ảnh theo context -- -->
       <section class="page" id="page-context">
         <div class="page-head">
-          <h1>Xuất ảnh từ ngữ cảnh</h1>
+          <h1>Xuất ảnh theo context</h1>
           <p>
-            Cấu hình thêm một model ngôn ngữ riêng biệt, giao cho nó trọng trách đọc hiểu chính văn và phần trước đó để quyết định vị trí chèn hình, tự soạn prompt và
-            ném qua cho tuyến trên vẽ hình. Nhánh này không thèm quan tâm model cốt truyện có hợp tác hay không, vứt thẻ nhân vật nào vào cũng chơi láng.
+            Khi câu trả lời của nhân vật không có marker <span class="mono">[ILLUST: ...]</span>, plugin sẽ tự động bù ảnh - Không phụ thuộc vào sự phối hợp của model cốt truyện, áp dụng cho mọi loại thẻ nhân vật.
+            <b>Mặc định đã bật sẵn, và mặc định dùng API chính của SillyTavern - Cài xong là dùng được ngay, không cần cấu hình.</b>
+            Bù ảnh có hai cách: Nhờ model phân tích dịch thân bài thành prompt xuất ảnh, hoặc đem nguyên văn thân bài gửi cho tuyến trên (Văn sinh ảnh thực thụ).
           </p>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Công tắc tổng</div><div class="card-desc">Bật lên, khi câu trả lời của nhân vật không có thẻ đánh dấu thì sẽ tự động phi vào nhánh này</div></div>
+            <div><div class="card-title">Công tắc tổng</div><div class="card-desc">Mặc định bật: Khi câu trả lời của nhân vật không có marker thì tự động đi theo luồng này</div></div>
             <button class="btn sm" id="btn-ctx-reload">Tải lại</button>
           </div>
           <div class="card-body">
             <div class="switch-row">
               <div class="sw" id="sw-ctx_enabled" data-key="ctx_enabled"></div>
               <div class="sr-text">
-                <div class="sr-lab">Kích hoạt Xuất ảnh từ ngữ cảnh</div>
+                <div class="sr-lab">Bật Xuất ảnh theo context</div>
                 <div class="sr-hint">
-                  Tồn tại song song với nhánh Điều hướng bằng thẻ đánh dấu nhưng không dẫm chân nhau: Khi chính văn có sẵn <span class="mono">[ILLUST: …]</span> thì đi nhánh đánh dấu (Đỡ tốn thời gian chờ);
-                  Nếu không có thẻ thì mới gọi model phân tích ra làm việc.
+                  Tồn tại song song với luồng marker và không bị trùng lặp: Khi thân bài đã có <span class="mono">[ILLUST: ...]</span> thì đi luồng marker;
+                  Khi không có marker mới gọi model phân tích. <b>Mặc định bật, cài xong là dùng được</b>.
                 </div>
               </div>
             </div>
@@ -421,35 +484,150 @@ input[type=number]{-moz-appearance:textfield}
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Model phân tích</div><div class="card-desc">API Chat tương thích OpenAI, không liên quan gì tới tuyến trên xuất ảnh</div></div>
-            <button class="btn sm" id="btn-ctx-test">Test kết nối</button>
+            <div><div class="card-title">Phương thức bù ảnh</div><div class="card-desc">Khi không có marker, sẽ gửi cái gì cho tuyến trên xuất ảnh</div></div>
           </div>
           <div class="card-body">
             <label class="field">
-              <span class="lab">Địa chỉ API</span>
-              <input type="text" id="f-ctx_url" placeholder="https://api.openai.com/v1　hoặc　http://127.0.0.1:4000/v1">
-              <span class="hint">API nào tương thích chuẩn OpenAI cũng được hết: Official, proxy, local gì cân tất. Không đá động gì tới cái Địa chỉ dịch vụ NAI bên trang "Cài đặt" đâu.</span>
+              <span class="lab">Khi trong thân bài không có marker</span>
+              <select id="f-ctx_mode">
+                <option value="direct">Xuất trực tiếp nguyên văn thân bài (Mặc định · Văn sinh ảnh thực thụ)</option>
+                <option value="analyze">Model phân tích chuyển thành prompt (Bắt buộc chọn nếu kết nối NAI chính thức)</option>
+              </select>
+              <span class="hint">
+                <b>Xuất trực tiếp nguyên văn thân bài (Mặc định)</b> - Bỏ qua model phân tích, đem <b>nguyên văn câu trả lời của nhân vật vừa mới tạo ra</b> gửi cho tuyến trên xuất ảnh,
+                luồng hoạt động là "Văn -> Ảnh", tức là văn sinh ảnh đúng nghĩa. <b>Không cần cấu hình bất kỳ model phân tích nào</b>,
+                cũng không tốn thêm một lần gọi model và mười mấy giây chờ đợi - Cài vào là xài luôn.
+              </span>
+              <span class="hint">
+                <b>Model phân tích chuyển thành prompt</b> - Cho một model chữ đọc thân bài trước, lựa ra khung hình đáng vẽ, chốt vị trí sẽ chèn dưới đoạn nào,
+                sau đó viết thành prompt xuất ảnh, rồi gửi cho tuyến trên. Luồng hoạt động là "Văn -> Văn -> Ảnh".
+                <b>Nếu kết nối trực tiếp NovelAI chính thức / Gateway NAI thì bắt buộc phải chọn mục này</b>: Tuyến trên loại đó được train theo thẻ Danbooru,
+                nhét nguyên một đoạn văn xuôi tiếng Việt vào đó chẳng khác gì nhét rác. Ưu điểm là có phân cảnh, có thể chèn ảnh vào đúng vị trí chỉ định, một câu trả lời có thể ra nhiều ảnh.
+              </span>
             </label>
+            <div class="notice">
+              <b>Xuất trực tiếp thân bài sẽ gửi đi cái gì</b><br>
+              Chỉ có duy nhất <b>phần thân bài của câu trả lời nhân vật mới nhất</b> - Những đoạn đối thoại trước đó, tin nhắn bạn gửi, thiết lập thẻ nhân vật, tuyệt đối không mang theo một thứ gì.
+              Trong SillyTavern là đối thoại qua lại giữa người và AI, nhét nguyên cả mảng vào vừa tốn token, vừa làm model sinh ảnh không phân biệt được rốt cuộc phải vẽ khung hình nào.
+            </div>
             <label class="field">
-              <span class="lab">API Key</span>
-              <input type="text" id="f-ctx_key" placeholder="Key của dịch vụ đó; Mấy cái dịch vụ local không bắt xác thực thì bỏ trống cũng được">
+              <span class="lab">Chèn ảnh minh họa ở đâu</span>
+              <select id="f-ctx_direct_place">
+                <option value="scene">Chèn ngay dưới đoạn văn mang tính hình ảnh mạnh nhất (Khuyên dùng)</option>
+                <option value="end">Tất cả đều chèn ở cuối câu trả lời</option>
+              </select>
+              <span class="hint">
+                Xuất trực tiếp không đi qua model phân tích, không có "Câu trích dẫn gốc" để định vị, do đó phải tự lựa một chỗ thả neo trong thân bài:
+                Sau khi loại bỏ lời thoại trong ngoặc kép, loại bỏ phần bổ sung trong ngoặc đơn, <b>đoạn dài nhất còn sót lại</b> chính là nơi có khả năng đang tả cảnh tả người nhất.
+              </span>
+              <span class="hint">
+                Nó không định vị chuẩn xác được như chế độ phân tích (Bên kia thì "Vẽ cái gì" và "Chèn ở đâu" đều do một model chốt lại cùng lúc),
+                nhưng vẫn tốt hơn là cứ treo mãi ở cuối bài - Câu trả lời dài mà ảnh cứ nằm tuốt dưới cùng, đọc giống file đính kèm hơn là ảnh minh họa.
+                <b>Nếu toàn bộ câu trả lời chỉ có một đoạn, hoặc cả đoạn chỉ toàn là hội thoại, nó sẽ tự động lùi về vị trí cuối bài</b>.
+              </span>
             </label>
+
+            <div class="notice warn">
+              <b>Ba hạn chế của Xuất trực tiếp thân bài</b><br>
+              ① <b>Chỉ có tác dụng khi tuyến trên hiểu được ngôn ngữ tự nhiên</b>: Model chat vẽ ảnh / Tạo ảnh tương thích OpenAI thì được;
+              Kết nối trực tiếp NAI chính thức thì không - Khi hình thái gửi đi là "Chuỗi thẻ", chế độ này sẽ tự động bỏ qua, không báo lỗi cũng không xuất ảnh.<br>
+              <b>Việc bị phán đoán thành "Chuỗi thẻ" thường không phải do bạn kết nối trực tiếp NAI chính thức</b>: Phán đoán dựa vào địa chỉ xuất ảnh -
+              127.0.0.1 / localhost / Chứa :8888 / Cài chung extension service chuyển đổi trên cùng một trang, mới được tính là "Ăn ngôn ngữ tự nhiên";
+              <b>Service chuyển đổi deploy từ xa (Tên miền hoặc IP từ xa) sẽ bị đoán nhầm thành tuyến trên ăn thẻ tag</b>.
+              Gặp trường hợp đó không cần chuyển về chế độ phân tích, vào trang "Cài đặt" đổi "Loại tuyến trên" thành
+              <span class="mono">Service chuyển đổi</span> là được.<br>
+              ② <b>Xuất nhiều ảnh = Mở nhiều cửa sổ</b>: Có thể xuất nhiều ảnh theo "Giới hạn mỗi lượt" - Plugin sẽ cắt thân bài theo từng đoạn thành nhiều phần,
+              Ảnh 1 vẽ đoạn đầu, Ảnh 2 vẽ đoạn giữa... Mỗi ảnh gửi độc lập lên tuyến trên một lần, nội dung hiển nhiên là khác nhau
+              (Không phải lấy một đoạn vẽ đi vẽ lại N lần; Nếu thân bài chỉ có một đoạn thì tự nhiên cũng chỉ xuất 1 ảnh).<br>
+              ③ <b>Điểm chèn ảnh là đoán mò</b>: Không qua phân tích thì không có "Câu trích dẫn gốc" để định vị, chỉ có thể chọn theo vị trí đoạn văn.
+              Muốn vị trí chính xác (Ảnh đặt ngay dưới khung cảnh mà nó vẽ), thì phải dùng chế độ phân tích - Bên kia "Vẽ gì" và "Chèn đâu" là chốt xong trong một lần.<br>
+              ④ <b>Hit "Kênh phân luồng" thì tạm thời chuyển sang phân tích</b>: Xuất trực tiếp sẽ gửi ngôn ngữ tự nhiên, trong khi kênh phân luồng
+              (NAI xịn / Gateway) chỉ ăn thẻ tag, trực tiếp nhét văn xuôi vào như thẻ tag thì chắc chắn không vẽ ra được -
+              Do đó khi thân bài hit điều kiện phân luồng, sẽ tạm thời gọi model phân tích để dịch thân bài thành thẻ tag rồi mới đi qua kênh phân luồng.
+              <b>Số lượng ảnh và tổ hợp nội dung được quyết định bởi cài đặt riêng của kênh phân luồng</b> (Kênh phân luồng mỗi lần xuất mấy ảnh / Tổ hợp nội dung / Vị trí ảnh đời thường),
+              tách biệt hoàn toàn với "Giới hạn mỗi lượt" của kênh chính. Model phân tích mặc định là API chính của SillyTavern (Zero config);
+              Nếu muốn dùng model chuyên dụng cho đường này, cứ xuống thẻ "Model phân tích" bên dưới chọn "Tùy chỉnh một model" là xong.
+            </div>
             <label class="field">
-              <span class="lab">Tên model</span>
-              <input type="text" id="f-ctx_model" placeholder="Ví dụ gpt-4o-mini, qwen3.8-max, deepseek-chat">
-              <span class="hint">Không có giá trị mặc định, bắt buộc tự điền tay. Model này chỉ vác mỗi cái việc mường tượng khung hình và soạn prompt thôi, cho nên recommend dùng mấy con model hạng nhẹ (lightweight) cho lẹ.</span>
+              <span class="lab">Chỉ thị vẽ · Bổ sung (Tùy chọn)</span>
+              <textarea id="f-ctx_direct_guide" rows="6" placeholder="Để trống = Chỉ dùng chỉ thị tích hợp sẵn. Muốn cố định bố cục, góc máy, tone màu v.v. theo sở thích của mình thì viết vào đây, sẽ được ghép vào sau chỉ thị tích hợp sẵn, trước thân bài"></textarea>
+              <span class="hint">
+                Khi xuất trực tiếp, plugin sẽ gửi trước cho model sinh ảnh một đoạn <b>chỉ thị vẽ tích hợp sẵn</b> (Chỉ vẽ khoảnh khắc mang tính hình ảnh mạnh nhất trong thân bài,
+                phục dựng nhân vật theo mô tả, không trộn nhiều khoảnh khắc vào cùng một bức ảnh, không biến đối thoại trong thân bài thành chữ trên hình).
+                Nó làm thay những việc mà model phân tích vốn dĩ sẽ tiện tay làm -
+                <b>Thiếu nó, một đoạn văn xuôi dài có kèm đối thoại rất dễ đẻ ra quái vật chắp vá, nhân vật bị đổi thành đồ thời trang hiện đại</b>, do đó chỉ thị tích hợp sẵn không cho phép tắt.
+                Điền vào đây là những yêu cầu bạn muốn <b>cố định thêm</b>, chứ không phải thay thế.
+              </span>
+            </label>
+
+            <div class="notice warn">
+              <b>Sau khi chuyển sang Xuất trực tiếp, hướng đi của các trường ở trang "Prompt" đã thay đổi</b><br>
+              Trước đây chúng đều được <b>tiêm cho model phân tích</b>, bây giờ chế độ xuất trực tiếp không có model phân tích, sẽ chuyển sang do model sinh ảnh trực tiếp nhận lấy:<br>
+              ・<b>Phong cách vẽ</b> -> Ghép thành <span class="mono">【Phong cách vẽ】...</span> đặt trước thân bài (<b>Nguồn chính để giữ tính nhất quán cho phong cách vẽ, cực kỳ khuyến nghị điền</b>)<br>
+              ・<b>Prompt chất lượng (Positive)</b> -> Ghép thành <span class="mono">【Chất lượng】...</span>, giống như trên<br>
+              ・<b>Prompt tiêu cực (Negative)</b> -> Ghép thành <span class="mono">【Prompt tiêu cực】...</span>, cũng đặt trước thân bài (Nói với model chat vẽ ảnh "Không được xuất hiện X" đôi khi sẽ có tác dụng phụ ngược lại, nếu gặp phải thì cứ xóa trắng cột này đi - Cột này vốn dĩ mặc định để trống, điền hay không là do bạn)<br>
+              ・<b>Từ phá giới hạn·Model phân tích</b> -> <b>Không sử dụng ở chế độ xuất trực tiếp</b> (Không có model phân tích để mà phá); <b>Từ phá giới hạn·Tuyến trên xuất ảnh</b> vẫn được ghép vào phía trước cùng như cũ, bây giờ nó được đưa trực tiếp cho model sinh ảnh luôn<br>
+              ・<b>Chuỗi họa sĩ</b> -> Tự động bỏ qua khi xuất trực tiếp (Gửi ngôn ngữ tự nhiên, tên họa sĩ tiếng Anh lẫn vào văn xuôi chỉ làm ô nhiễm mô tả)
+            </div>
+
+            <div class="muted" style="font-size:12px;line-height:1.65">
+              Hai chế độ dùng chung một công tắc (Cái "Công tắc tổng" ở trên) và cùng một bộ thiết lập xuất ảnh (Địa chỉ xuất ảnh, kích thước, Từ phá giới hạn·Tuyến trên xuất ảnh v.v.).
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="card-analyzer">
+          <div class="card-head">
+            <div><div class="card-title">Model phân tích</div><div class="card-desc">Cái model chuyên đọc thân bài, định vị trí, viết prompt</div></div>
+            <button class="btn sm" id="btn-ctx-test">Xem / Kiểm tra</button>
+          </div>
+          <div class="card-body">
+            <label class="field">
+              <span class="lab">Dùng model nào để đọc</span>
+              <select id="f-ctx_source">
+                <option value="main">Đi theo API chính của SillyTavern (Khuyên dùng · Zero config)</option>
+                <option value="custom">Tùy chỉnh một model</option>
+              </select>
+              <span class="hint">
+                Khi chọn "Đi theo API chính của SillyTavern", sẽ dùng trực tiếp cái model mà bạn đang chat trong SillyTavern: Không cần điền bất kỳ địa chỉ hay API key nào,
+                request được SillyTavern forward qua, cũng không bị trình duyệt chặn cross-domain (CORS). <b>Đánh đổi lại</b> là khi bạn đổi model chính thì chất lượng phân tích cũng bị ảnh hưởng theo,
+                và nếu model chính đắt tiền / chạy chậm thì mỗi lượt bạn sẽ phải trả giá thêm một lần. Muốn tách bạch ra thì chuyển sang chọn "Tùy chỉnh một model".
+              </span>
             </label>
             <div class="muted" style="font-size:12px;line-height:1.65;margin-bottom:14px">
-              Phong cách mỹ thuật, Prompt chất lượng tích cực, Prompt phủ định và <b>Từ khóa phá giới hạn</b> vui lòng điền ở bên <b>Trang "Prompt"</b>, ở trang này không cấu hình trùng lặp nữa.
-              Từ khóa phá giới hạn sẽ được đính kèm theo mỗi một request của model phân tích trên trang này -- Nếu chính văn có chứa nội dung máu me, người lớn làm model phân tích sợ không dám trả lời, thì cứ quăng thêm giải thích phụ trợ vào cái ô đó là qua ải.
+              Hiện đang có hiệu lực: <b id="ctx-active">-</b>
+            </div>
+
+            <div id="ctx-custom-fields">
+              <label class="field">
+                <span class="lab">Địa chỉ API</span>
+                <input type="text" id="f-ctx_url" placeholder="https://api.openai.com/v1 hoặc http://127.0.0.1:4000/v1">
+                <span class="hint">Bất kỳ dịch vụ tương thích OpenAI nào: Hàng offical, trạm trung chuyển, proxy local đều được. Không ảnh hưởng gì đến địa chỉ xuất ảnh bên trang "Cài đặt".</span>
+              </label>
+              <label class="field">
+                <span class="lab">API Key</span>
+                <span class="secret-wrap">
+                  <input type="password" id="f-ctx_key" autocomplete="off" placeholder="Key của dịch vụ này; Service local không cần xác thực có thể để trống">
+                  <button type="button" class="secret-toggle" data-secret="f-ctx_key" aria-label="Hiển thị hoặc ẩn">Hiển thị</button>
+                </span>
+              </label>
+              <label class="field">
+                <span class="lab">Tên model</span>
+                <input type="text" id="f-ctx_model" placeholder="Ví dụ gpt-4o-mini, qwen3.8-max, deepseek-chat">
+                <span class="hint">Không có giá trị mặc định, bắt buộc phải điền tay. Model này chỉ đảm nhận việc phân cảnh và sinh prompt, khuyến nghị nên chọn model nhẹ (lightweight).</span>
+              </label>
+            </div>
+            <div class="muted" style="font-size:12px;line-height:1.65;margin-bottom:14px">
+              Phong cách vẽ, Prompt chất lượng (Positive), Prompt tiêu cực (Negative) và <b>Từ phá giới hạn</b> được điền ở <b>trang "Prompt"</b>, trang này không lặp lại cấu hình nữa.
+              Từ phá giới hạn sẽ được gửi đi cùng với mọi request của model phân tích ở trang này - Khi thân bài chứa nội dung bạo lực, người lớn khiến model phân tích từ chối, hãy điền giải thích bổ sung vào cột đó là xong.
             </div>
             <label class="field">
               <span class="lab">Timeout phân tích (giây)</span>
               <input type="number" id="f-ctx_timeout_sec" min="10" max="600">
             </label>
             <div class="muted" style="font-size:12px;line-height:1.65">
-              Số lượng ảnh xuất ra sẽ do cục <b>Mỗi câu trả lời tối đa</b> ở trang "Cài đặt" bóp cổ lại, xài chung một thiết lập với nhánh Điều hướng bằng thẻ đánh dấu luôn.
-              Khi số lượng cần vẽ nhiều hơn một, model phân tích sẽ tự động bóc tách và chèn rải rác vào đầu, giữa và cuối của chính văn.
+              Số lượng ảnh vẽ được kiểm soát chung bởi <b>Giới hạn mỗi lượt</b> ở trang "Cài đặt", dùng chung cài đặt với luồng sử dụng marker.
+              Khi số lượng là nhiều ảnh, model phân tích sẽ chia thân bài thành đoạn đầu, đoạn giữa và đoạn cuối để chọn vị trí chèn ảnh.
             </div>
             <div class="err" id="ctx-test-err" style="margin-top:10px"></div>
           </div>
@@ -457,23 +635,23 @@ input[type=number]{-moz-appearance:textfield}
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Chạy test tức thì</div><div class="card-desc">Thực hiện quy trình phân tích và xuất ảnh lên câu trả lời cuối cùng của nhân vật</div></div>
-            <button class="btn primary sm" id="btn-ctx-gen">Phân tích và vẽ luôn</button>
+            <div><div class="card-title">Thực thi ngay một lần</div><div class="card-desc">Thực hiện phân tích và xuất ảnh đối với câu trả lời cuối cùng của nhân vật trong cuộc trò chuyện hiện tại</div></div>
+            <button class="btn primary sm" id="btn-ctx-gen">Phân tích và xuất ảnh</button>
           </div>
           <div class="card-body">
-            <div id="ctx-result"><div class="empty">Bấm cái nút này là có thể verify luôn cái dây chuyền này có chạy mượt hay không, không cần phải đợi tới lượt chat sau.</div></div>
+            <div id="ctx-result"><div class="empty">Click vào nút để lập tức xác minh đường truyền này, không cần chờ đến lượt tạo tiếp theo.</div></div>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Sự tương thích giữa thành phẩm và Tuyến trên</div><div class="card-desc">Kết quả phân tích sẽ được mớm cho tuyến trên xuất ảnh bằng cách nào</div></div></div>
+          <div class="card-head"><div><div class="card-title">Mối quan hệ giữa thành phẩm và Tuyến trên</div><div class="card-desc">Kết quả phân tích được gửi cho tuyến trên xuất ảnh như thế nào</div></div></div>
           <div class="card-body">
             <div class="muted" style="font-size:12.5px;line-height:1.8">
-              Với mỗi một khung hình, model phân tích sẽ nhả ra <b>Mô tả bằng ngôn ngữ tự nhiên</b> và <b>Danbooru tags</b> cùng lúc,
-              cục <b>Hình thái nội dung gửi đi</b> ở trang "Cài đặt" sẽ đứng ra quyết định mớm cục nào cho tuyến trên:
-              <br>· Đi đường V.Adapter (Tuyến trên định dạng OpenAI) -> Mớm mô tả tự nhiên;
-              <br>· Nối thẳng Official NovelAI / NAI Gateway (Mô hình khuếch tán - Diffusion) -> Mớm thẻ tags.
-              <br>Hai đường ống xuất ảnh này đều bòn rút chung một bãi thành phẩm, khỏi lo cấu hình rườm rà. Ảnh minh họa chỉ hiển thị lên bề mặt thôi, prompt text sẽ không lưu lại trong chính văn, và càng không chui vào ngữ cảnh (context).
+              Model phân tích đồng thời sinh ra <b>Mô tả bằng ngôn ngữ tự nhiên</b> và <b>Thẻ Danbooru</b> cho mỗi khung hình,
+              được quyết định gửi đi đoạn nào dựa vào <b>Hình thái prompt</b> ở trang "Cài đặt":
+              <br>· 经 V.Adapter (Tuyến trên định dạng OpenAI) -> Gửi mô tả;
+              <br>· Kết nối trực tiếp NovelAI chính thức / Gateway NAI (Diffusion model) -> Gửi thẻ tag.
+              <br>Hai đường xuất ảnh dùng chung một thành phẩm, không cần cấu hình riêng biệt. Hình minh họa chỉ đi qua tầng hiển thị, thân bài không giữ lại prompt dưới dạng text, cũng không đưa vào context.
             </div>
           </div>
         </div>
@@ -483,20 +661,23 @@ input[type=number]{-moz-appearance:textfield}
       <section class="page" id="page-settings">
         <div class="page-head">
           <h1>Cài đặt</h1>
-          <p>Chỉnh tới đâu lưu ngay tới đó. Cái bảng này chỉ là cái vỏ (frontend) thôi, chuyện ghi vào ổ cứng (thực tế) là do phần extension lõi bên SillyTavern lo.</p>
+          <p>Thay đổi có hiệu lực và được lưu lại ngay tức thì. Bảng quản lý chỉ đảm nhận phần giao diện, việc ghi dữ liệu thực tế do phần core của extension bên phía SillyTavern thực hiện.</p>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Công tắc tổng</div><div class="card-desc">Tắt rồi thì dù câu trả lời của AI có nhét thẻ tag vào cũng không thèm vẽ đâu nhé</div></div>
+            <div><div class="card-title">Công tắc tổng</div><div class="card-desc">Mặc định bật; Tắt đi thì cả hai luồng vẽ ảnh đều dừng</div></div>
             <button class="btn sm" id="btn-reload-settings">Tải lại</button>
           </div>
           <div class="card-body">
             <div class="switch-row">
               <div class="sw" id="sw-enabled" data-key="enabled"></div>
               <div class="sr-text">
-                <div class="sr-lab">Bật tự động vẽ hình</div>
-                <div class="sr-hint">Đánh hơi thấy thẻ <span class="mono">[ILLUST: …]</span> là tự xách cọ lên vẽ rồi nhét vào ngay tại chỗ luôn.</div>
+                <div class="sr-lab">Bật Tự động vẽ minh họa</div>
+                <div class="sr-hint">
+                  Công tắc tổng. <b>Mặc định đã bật sẵn</b>. Tắt đi thì bất luận là thẻ <span class="mono">[ILLUST: ...]</span> trong thân bài,
+                  hay kết quả phân tích của "Xuất ảnh theo context", đều sẽ không xuất ảnh.
+                </div>
               </div>
             </div>
           </div>
@@ -504,23 +685,57 @@ input[type=number]{-moz-appearance:textfield}
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Tuyến trên (Upstream)</div><div class="card-desc">Địa chỉ dịch vụ giao thức NovelAI và phương thức xác thực</div></div>
-            <button class="btn sm" id="btn-test">Test kết nối</button>
+            <div><div class="card-title">Tuyến trên</div><div class="card-desc">Địa chỉ và xác thực của service giao thức NovelAI</div></div>
+            <button class="btn sm" id="btn-test">Kiểm tra kết nối</button>
           </div>
           <div class="card-body">
+            <div class="notice warn">
+              <b>Xem kỹ sự khác biệt giữa hai luồng xuất ảnh trước, sẽ bớt đi rất nhiều rắc rối</b>
+              <br>· <b>Kết nối trực tiếp NovelAI chính thức / Gateway NAI</b>: <b>Diffusion model thực thụ tự vẽ lấy</b> -
+              Prompt của bạn (Thẻ tag, Chuỗi họa sĩ) và các thông số như kích thước, số bước, đều tác động trực tiếp vào quá trình vẽ.
+              <br>· <b>Thông qua V.Adapter (Tuyến trên định dạng OpenAI)</b>: Ảnh do <b>model tuyến trên tự vẽ rồi trả thành phẩm về cho bạn</b>,
+              <b>không phải</b> kiểu "lấy mẫu từng frame để vẽ theo prompt của bạn" như NAI.
+              Do đó <b>những thứ như Chuỗi họa sĩ, thẻ họa sĩ Danbooru chỉ có Diffusion model mới hiểu, sẽ không dùng được trên đường này</b>
+              (Plugin sẽ tự động bỏ qua, không ghép vào); <b>Phong cách và hình ảnh do tuyến trên quyết định</b>, plugin này không tham gia vào quá trình vẽ.
+            </div>
             <label class="field">
-              <span class="lab">Địa chỉ dịch vụ NAI</span>
-              <input type="text" id="f-base_url" placeholder="Bỏ trống = Tự động mò xài V.Adapter trên cùng trang web">
-              <span class="hint">Nếu cài sẵn V.Adapter thì <strong>Cứ bỏ trống là được</strong>, hai thằng extension sẽ tự bắt tay nhau mà không cần cấu hình port gì ráo; Bắt buộc phải điền khi nối thẳng Official NAI / NAI Gateway bên thứ 3. Nếu điền vào mà xui xẻo rớt mạng, hệ thống cũng sẽ tự lật đật mò về xài V.Adapter.</span>
+              <span class="lab">Địa chỉ service NAI</span>
+              <input type="text" id="f-base_url" placeholder="Để trống = Tự động dùng V.Adapter trên cùng trang">
+              <span class="hint">Nếu đã cài đặt V.Adapter thì <strong>cứ để trống là xong</strong>, hai extension sẽ tự động nối với nhau, không cần port; Chỉ khi kết nối trực tiếp NAI chính thức / Gateway NAI bên thứ 3 mới cần điền. Sau khi điền nếu không kết nối được, hệ thống sẽ tự động chuyển sang dùng V.Adapter trên cùng trang.</span>
+            </label>
+            <label class="field">
+              <span class="lab">Loại tuyến trên</span>
+              <select id="f-upstream_type">
+                <option value="auto">Tự động đánh giá (Đoán theo địa chỉ)</option>
+                <option value="adapter">Service chuyển đổi (Adapter) · Ăn ngôn ngữ tự nhiên (V.Adapter / Model chat vẽ ảnh / Tạo ảnh tương thích OpenAI)</option>
+                <option value="nai">NovelAI chính thức · Ăn chuỗi thẻ (Bao gồm Gateway NAI / Trạm trung chuyển thứ 3)</option>
+              </select>
+              <span class="hint">
+                Quyết định thứ gửi đi là <b>Mô tả ngôn ngữ tự nhiên</b> hay <b>Chuỗi thẻ Danbooru</b>.
+                Địa chỉ chỉ có thể phân biệt "Local" và "Remote", <b>không thể phân biệt được "Service chuyển đổi deploy từ xa" và "Gateway NAI của bên thứ 3"</b> -
+                Cả hai đều là tên miền (domain) remote, nhìn y hệt nhau.
+              </span>
+              <span class="hint">
+                <b>Service chuyển đổi (Adapter) được deploy trên server bắt buộc phải chọn tay mục "Service chuyển đổi" này</b>:
+                Nếu không sẽ bị đoán nhầm thành NAI dựa theo địa chỉ, biểu hiện là xuất trực tiếp không ra hình, chỉ hiện thông báo "Hình thái gửi đi là Chuỗi thẻ".
+                Cài đặt trên cùng một máy tính với SillyTavern (<span class="mono">127.0.0.1</span> / <span class="mono">localhost</span> /
+                Địa chỉ có kèm <span class="mono">:8888</span>) thì có thể giữ nguyên "Tự động đánh giá".
+              </span>
+              <span class="hint">
+                Chỉ có tác dụng khi "Hình thái prompt" ở bên dưới là <span class="mono">auto</span>; Khi hình thái được chỉ định tay thì sẽ ưu tiên hình thái.
+              </span>
             </label>
             <label class="field">
               <span class="lab">API Key</span>
-              <input type="text" id="f-api_key" placeholder="nai_key của dịch vụ adapter; Phía server không cài key thì điền bậy bạ cũng vào được">
+              <span class="secret-wrap">
+                <input type="password" id="f-api_key" autocomplete="off" placeholder="nai_key của service chuyển đổi; Khi bên server để trống thì điền gì cũng được">
+                <button type="button" class="secret-toggle" data-secret="f-api_key" aria-label="Hiển thị hoặc ẩn">Hiển thị</button>
+              </span>
             </label>
             <label class="field">
-              <span class="lab">Tên Model</span>
-              <input type="text" id="f-model" placeholder="Official NAI / Gateway bắt buộc phải điền, ví dụ nai-diffusion-4-5-full; Băng qua V.Adapter thì thông số này bị vứt sọt rác">
-              <span class="hint">Không có giá trị mặc định, bắt buộc tự điền tay.</span>
+              <span class="lab">Tên model</span>
+              <input type="text" id="f-model" placeholder="Bắt buộc điền với NAI chính thức / Gateway, ví dụ nai-diffusion-4-5-full; Sẽ bị bỏ qua khi đi qua V.Adapter">
+              <span class="hint">Không có giá trị mặc định, bắt buộc phải điền tay.</span>
             </label>
             <div class="err" id="test-err"></div>
           </div>
@@ -528,122 +743,295 @@ input[type=number]{-moz-appearance:textfield}
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Hình thái nội dung gửi đi</div><div class="card-desc">Quyết định xem ném đoạn nào trong cái thẻ đánh dấu cho tuyến trên xơi</div></div>
+            <div><div class="card-title">Kênh phân luồng</div><div class="card-desc">Khung hình mà kênh chính không vẽ được, ném qua một backend xuất ảnh khác</div></div>
+            <button class="btn sm" id="btn-nsfw-test">Kiểm tra kết nối</button>
+          </div>
+          <div class="card-body">
+            <div class="switch-row">
+              <div class="sw" id="sw-nsfw_enabled" data-key="nsfw_enabled"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Bật kênh phân luồng</div>
+                <div class="sr-hint">
+                  Khi tắt thì các thiết lập bên dưới hoàn toàn không tham gia, mỗi một lần xuất ảnh đều đi qua kênh chính - Y hệt như lúc chưa cài chức năng này.
+                </div>
+              </div>
+            </div>
+
+            <div id="nsfw-fields">
+              <div class="notice" style="margin-top:14px">
+                <b>Nó giải quyết vấn đề gì</b><br>
+                Kênh chính (Ví dụ thông qua V.Adapter đi model chat vẽ ảnh) bị giới hạn bởi chính sách nội dung của nền tảng, một số khung hình submit lên đó chắc chắn sẽ thất bại,
+                đợi không mấy chục giây còn tốn mất một lần quota. Ở đây điền một <b>service giao thức NovelAI mà bạn có tài khoản</b>,
+                những khung hình kiểu đó sẽ được ném sang đó; Các khung hình còn lại vẫn đi kênh chính, không gửi dư một byte nào.
+              </div>
+              <div class="notice" style="margin-top:14px">
+                <b>Kết hợp với "Xuất trực tiếp thân bài"</b><br>
+                Chế độ xuất trực tiếp sẽ gửi đi ngôn ngữ tự nhiên, trong khi kênh phân luồng (NAI xịn / Gateway) chỉ ăn thẻ tag -
+                Nếu cứ đem nguyên văn xuôi nhét vào như thẻ tag thì không vẽ ra được. Do đó khi thân bài hit điều kiện phân luồng,
+                <b>chỉ tấm ảnh này</b> mới tự động tạm thời gọi model phân tích (Mặc định là API chính của SillyTavern) dịch thân bài thành
+                <span class="mono">desc + tags</span>, sau đó mới đi qua kênh phân luồng để gửi thẻ;
+                Các khung hình bình thường vẫn xuất trực tiếp (Zero phân tích). Nếu muốn đường này dùng model giỏi viết tag hơn,
+                hãy vào "Xuất ảnh theo context -> Model phân tích" chọn "Tùy chỉnh một model".
+              </div>
+
+              <label class="field" style="margin-top:14px">
+                <span class="lab">Địa chỉ service</span>
+                <input type="text" id="f-nsfw_base_url" placeholder="https://api.novelai.net hoặc một địa chỉ Gateway NAI nào đó">
+                <span class="hint">
+                  Bắt buộc phải là service <b>giao thức NovelAI</b> (Cung cấp <span class="mono">/ai/generate-image</span>).
+                  Khung hình phân luồng sẽ không bị fallback về V.Adapter - Đó chính là tuyến trên mà chúng ta đang muốn lách qua.
+                </span>
+              </label>
+              <label class="field">
+                <span class="lab">API Key</span>
+                <span class="secret-wrap">
+                  <input type="password" id="f-nsfw_api_key" autocomplete="off" placeholder="Key của service này">
+                  <button type="button" class="secret-toggle" data-secret="f-nsfw_api_key" aria-label="Hiển thị hoặc ẩn">Hiển thị</button>
+                </span>
+              </label>
+              <label class="field">
+                <span class="lab">Tên model</span>
+                <input type="text" id="f-nsfw_model" placeholder="Ví dụ nai-diffusion-4-5-full">
+                <span class="hint">Không có giá trị mặc định, điền theo yêu cầu của service đó.</span>
+              </label>
+              <div class="grid c2">
+                <label class="field" style="margin:0">
+                  <span class="lab">Loại tuyến trên</span>
+                  <select id="f-nsfw_upstream_type">
+                    <option value="nai">NovelAI chính thức · Ăn chuỗi thẻ (Bao gồm Gateway NAI / Trạm trung chuyển thứ 3)</option>
+                    <option value="adapter">Service chuyển đổi (Adapter) · Ăn ngôn ngữ tự nhiên</option>
+                    <option value="auto">Tự động đánh giá (Đoán theo địa chỉ)</option>
+                  </select>
+                </label>
+                <label class="field" style="margin:0">
+                  <span class="lab">Hình thái prompt</span>
+                  <select id="f-nsfw_prompt_format">
+                    <option value="tags">tags — Gửi thẻ Danbooru (Mặc định của hệ NAI)</option>
+                    <option value="description">description — Gửi mô tả ngôn ngữ tự nhiên</option>
+                    <option value="both">both — Gộp cả hai đoạn gửi đi</option>
+                    <option value="auto">auto — Đánh giá theo địa chỉ và loại tuyến trên</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field">
+                <span class="lab">Prompt bổ sung (Dùng riêng cho khung hình phân luồng)</span>
+                <textarea id="f-nsfw_prefix" rows="3" placeholder="Để trống = Không thêm. Nội dung điền ở đây sẽ được ghép vào trước cùng của prompt dành cho khung hình phân luồng"></textarea>
+                <span class="hint">
+                  Nó khác với "Từ phá giới hạn xuất ảnh" của kênh chính: <b>Từ phá giới hạn được chuẩn bị cho các tuyến trên bị giới hạn</b>,
+                  bản thân tuyến trên phân luồng không giới hạn nội dung, ghép nó vào chỉ làm ô nhiễm khung hình, do đó khi phân luồng sẽ không áp dụng nó nữa.
+                  Chỗ này dùng để đặt những nội dung cố định mà tuyến trên đó thực sự cần - Thẻ chất lượng, yêu cầu phong cách vẽ v.v.
+                </span>
+                <span class="hint">
+                  <b>Diffusion model dựa vào thẻ tag cụ thể để vẽ</b>: Chỉ viết các từ khái quát như <span class="mono">nsfw</span>,
+                  <span class="mono">nude</span>, <span class="mono">sex</span> thường sẽ không vẽ ra được thứ bạn muốn,
+                  hình ảnh phải neo vào các thẻ tag về vị trí cơ thể và hành động chính xác thì mới vững được - Ví dụ
+                  <span class="mono">kissing</span>, <span class="mono">handjob</span>,
+                  <span class="mono">fellatio</span>, <span class="mono">spread legs</span>,
+                  <span class="mono">breasts</span>, <span class="mono">nipples</span> v.v.,
+                  và phải khớp với nội dung cốt truyện đang thực sự diễn ra tại thời điểm đó. Quy tắc mặc định tiêm cho model cốt truyện và model phân tích
+                  ("Cài đặt -> Tiêm prompt -> Quy tắc hiện tại") đã bao gồm yêu cầu này; Nếu model cốt truyện của bạn vẫn chỉ viết từ chung chung,
+                  hãy copy quy tắc đó vào Thẻ nhân vật / Worldbook, hoặc đổi sang luồng "Model phân tích" của "Xuất ảnh theo context", plugin không thể bù đắp thay bạn được.
+                </span>
+              </label>
+              <label class="field">
+                <span class="lab">Prompt tiêu cực</span>
+                <textarea id="f-nsfw_negative" rows="2" placeholder="Để trống = Dùng theo Prompt tiêu cực của kênh chính"></textarea>
+              </label>
+              <label class="field">
+                <span class="lab">Từ đánh giá phân luồng</span>
+                <textarea id="f-nsfw_words" rows="3" placeholder="Để trống = Chỉ dùng từ phân loại có sẵn của plugin. Ngăn cách bằng dấu phẩy tiếng Anh, có thể điền Anh/Việt, ví dụ: nsfw, topless, đồ bơi"></textarea>
+                <span class="hint">
+                  Dùng prompt xuất ảnh (Mô tả ngôn ngữ tự nhiên <b>và</b> Chuỗi thẻ, tính cả hai) để match với các từ này, hit bất kỳ từ nào cũng sẽ đi kênh phân luồng.
+                  Việc đánh giá chỉ thực hiện ở bước này, <b>không thay đổi prompt, cũng không gửi thêm request nào</b>.
+                  Plugin có tích hợp sẵn một bộ từ phân loại nội dung chung; Nếu muốn phù hợp hơn với nhu cầu sử dụng của mình, bạn cứ bổ sung thêm từ vào đây.
+                </span>
+              </label>
+              <div class="grid c2">
+                <label class="field" style="margin:0">
+                  <span class="lab">Kênh phân luồng mỗi lần xuất mấy ảnh (NAI)</span>
+                  <input type="number" id="f-nsfw_max" min="1" max="6" step="1" value="2">
+                  <span class="hint">
+                    Tách biệt hoàn toàn với "Giới hạn mỗi lượt" của kênh chính, hai kênh tự quản lý riêng.<br>
+                    Đặt là 2 thì kết hợp với "Tổ hợp nội dung" bên dưới sẽ ra 1 ảnh Đời thường + 1 ảnh NSFW;
+                    Đặt là 1 thì dù có chọn "Đời thường + NSFW" cũng chỉ xuất 1 ảnh NSFW.
+                  </span>
+                </label>
+                <label class="field" style="margin:0">
+                  <span class="lab">Tổ hợp nội dung</span>
+                  <select id="f-nsfw_mix">
+                    <option value="daily_nsfw">1 Đời thường + 1 NSFW (Mặc định)</option>
+                    <option value="nsfw_only">Toàn bộ là NSFW</option>
+                  </select>
+                  <span class="hint">
+                    Khi hit phân luồng thì lô ảnh này sẽ vẽ cái gì. <b>Đời thường + NSFW</b>: Xuất một tấm đời thường, một tấm người lớn;
+                    <b>Toàn bộ là NSFW</b>: Mỗi tấm đều vẽ cảnh người lớn. Model phân tích sẽ đọc toàn bộ thân bài,
+                    đánh giá ngữ nghĩa để tìm ra khoảnh khắc người lớn thực sự (Bất kể nằm ở đâu), chứ không dùng từ khóa để chọn đoạn một cách cứng nhắc.
+                  </span>
+                </label>
+              </div>
+              <label class="field">
+                <span class="lab">Vị trí ảnh của tấm đời thường</span>
+                <select id="f-nsfw_daily_place">
+                  <option value="auto">Tự động - Model phân tích tự chọn (Mặc định)</option>
+                  <option value="front">Đoạn đầu thân bài</option>
+                  <option value="middle">Đoạn giữa thân bài</option>
+                  <option value="end">Đoạn cuối thân bài</option>
+                </select>
+                <span class="hint">
+                  Chỉ có tác dụng với tổ hợp "Đời thường + NSFW" và kênh phân luồng xuất 2 ảnh:
+                  Tấm đời thường sẽ chọn một khoảnh khắc <b>không phải người lớn</b> ở phân đoạn thân bài tương ứng;
+                  Tấm NSFW thì luôn luôn do model phân tích dùng ngữ nghĩa để phán đoán đâu là khoảnh khắc người lớn thực sự.
+                </span>
+              </label>
+              <label class="field">
+                <span class="lab">Chiến lược retry sau khi Kênh chính thất bại</span>
+                <select id="f-nsfw_retry">
+                  <option value="off">Không tự động chuyển - Kênh chính thất bại thì thôi, tuyệt đối không chạm vào quota NAI</option>
+                  <option value="smart">Thông minh - Chỉ khi nghi ngờ là NSFW mới chuyển phân luồng thử lại (Mặc định)</option>
+                  <option value="force">Bắt buộc - Kênh chính thất bại nhất luật chuyển phân luồng thử lại</option>
+                </select>
+                <span class="hint">
+                  Khi kênh chính (qwen) xuất ảnh thất bại, có tự động đổi sang kênh phân luồng (NAI xịn) để vẽ lại hay không.<br>
+                  <b>Không tự động chuyển</b>: Thất bại thì thôi, thậm chí không thèm làm đánh giá "Nghi ngờ" - Tiết kiệm quota nhất, nhưng nếu NSFW bị lọt lưới thì sẽ không ra ảnh.<br>
+                  <b>Thông minh</b>: Thân bài/marker hit từ đánh giá, hoặc lỗi là bị từ chối do chính sách nội dung (qwen từ chối trả lời vì NSFW) thì mới chuyển -
+                  Ảnh đời thường mà qwen bị lỗi mạng thì sẽ không bị đốt quota NAI vô ích.<br>
+                  <b>Bắt buộc</b>: Thất bại vì bất cứ lý do gì cũng chuyển phân luồng vẽ lại, chắc chắn sẽ có ảnh, nhưng nếu ảnh đời thường bị lỗi cũng sẽ đốt quota NAI.
+                </span>
+              </label>
+            </div>
+            <div class="err" id="nsfw-test-err"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Hình thái prompt</div><div class="card-desc">Quyết định sẽ gửi phần nào của đánh dấu cho tuyến trên</div></div>
           </div>
           <div class="card-body">
             <label class="field">
               <span class="lab">Nội dung gửi cho tuyến trên</span>
               <select id="f-prompt_format">
-                <option value="auto">auto — Tự động ngó địa chỉ mà bắt bài (Mặc định)</option>
-                <option value="description">description — Sống chết ném ngôn ngữ mô tả tự nhiên</option>
-                <option value="tags">tags — Sống chết ném nhãn Danbooru</option>
-                <option value="both">both — Cột cả mô tả lẫn nhãn thành một cục ném sang</option>
+                <option value="auto">auto — Tự động đánh giá theo địa chỉ service (Mặc định)</option>
+                <option value="description">description — Luôn gửi mô tả bằng ngôn ngữ tự nhiên</option>
+                <option value="tags">tags — Luôn gửi thẻ Danbooru</option>
+                <option value="both">both — Gộp mô tả và tag lại rồi gửi</option>
               </select>
               <span class="hint">
-                Hình dạng (Format) của thẻ đánh dấu là <span class="mono">[ILLUST: Mô tả bằng ngôn ngữ tự nhiên | Danbooru,Tags]</span>,
-                Hai mảng này chuyên trị hai loại tuyến trên khác nhau. Mô hình khuếch tán (Official NovelAI / NAI Gateway) thì ăn tags mới tiêu hóa nổi;
-                Tuyến trên định dạng OpenAI (Bao gồm LLM Chat) thì đòi hỏi phải là câu chữ đàng hoàng.<br>
-                Luật lệ để thằng <span class="mono">auto</span> nó bắt bài: Địa chỉ là
+                Định dạng đánh dấu là <span class="mono">[ILLUST: Mô tả bằng ngôn ngữ tự nhiên | Danbooru,Tags]</span>,
+                hai nửa tương ứng với hai loại tuyến trên. Diffusion model (NovelAI chính thức / Gateway NAI) coi thẻ tag là định dạng đầu vào hợp lệ;
+                Tuyến trên định dạng OpenAI (Bao gồm model chat) cần ngôn ngữ tự nhiên liền mạch.<br>
+                Quy tắc phán đoán của <span class="mono">auto</span>: Địa chỉ là
                 <span class="mono">127.0.0.1</span> / <span class="mono">localhost</span> /
-                <span class="mono">:8888</span> (Tức là đang chuyển tiếp qua V.Adapter) thì ném đoạn mô tả, còn lại thì nhồi tags vào.
+                <span class="mono">:8888</span> (Tức là forward qua V.Adapter) thì gửi mô tả, còn lại gửi thẻ tag.
               </span>
             </label>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Tham số xuất ảnh</div><div class="card-desc">Phóng thẳng cho tuyến trên (Upstream)</div></div></div>
+          <div class="card-head"><div><div class="card-title">Thông số xuất ảnh</div><div class="card-desc">Gửi trực tiếp cho tuyến trên</div></div></div>
           <div class="card-body">
             <div class="switch-row">
               <div class="sw" id="sw-parallel" data-key="parallel"></div>
               <div class="sr-text">
-                <div class="sr-lab">Xuất ảnh song song (Parallel)</div>
+                <div class="sr-lab">Xuất ảnh song song</div>
                 <div class="sr-hint">
-                  Mặc định là tắt (Tuần tự: Xong tấm này mới xin tấm khác). Bật lên thì nó sẽ spam request dựa theo cục "Mỗi câu trả lời tối đa",
-                  Thằng nào chạy xong trước thì chèn vào trước, mạnh ai nấy chạy không chờ đợi. Chỉ nên xài với mấy tuyến trên sộp cho phép concurrency (Đồng thời);
-                  Mấy cái proxy bị bóp băng thông (Rate limit) hay khóa mỏ (Phong hiểm / Risk control) thì ráng mà tắt giùm.
+                  Mặc định tắt (Tuần tự: Một tấm vẽ xong mới gọi tấm tiếp theo). Bật lên thì sẽ phát request cùng lúc theo "Giới hạn mỗi lượt",
+                  cái nào trả về trước thì chèn vào thân bài trước, không chờ đợi nhau. Phù hợp với những tuyến trên cho phép chạy đồng thời (concurrency);
+                  Nếu dùng dịch vụ trung chuyển có giới hạn tốc độ (rate limit) hoặc quản lý rủi ro thì nên tắt đi.
                 </div>
               </div>
             </div>
             <div class="grid c3" style="margin-top:14px">
-              <label class="field"><span class="lab">Rộng (Width)</span><input type="number" id="f-width" min="64" max="2048" step="8"></label>
-              <label class="field"><span class="lab">Cao (Height)</span><input type="number" id="f-height" min="64" max="2048" step="8"></label>
-              <label class="field"><span class="lab">Số bước (Steps)</span><input type="number" id="f-steps" min="1" max="50"></label>
+              <label class="field"><span class="lab">Chiều rộng</span><input type="number" id="f-width" min="64" max="2048" step="8"></label>
+              <label class="field"><span class="lab">Chiều cao</span><input type="number" id="f-height" min="64" max="2048" step="8"></label>
+              <label class="field"><span class="lab">Số bước lấy mẫu (Steps)</span><input type="number" id="f-steps" min="1" max="50"></label>
             </div>
             <div class="grid c3">
-              <label class="field"><span class="lab">CFG (scale)</span><input type="number" id="f-scale" min="0" max="30" step="0.5"></label>
-              <label class="field"><span class="lab">Mỗi câu trả lời tối đa (Tấm)</span><input type="number" id="f-max_per_round" min="1" max="6"></label>
-              <label class="field"><span class="lab">Timeout mỗi tấm (giây)</span><input type="number" id="f-timeout_sec" min="30" max="1800"></label>
+              <label class="field"><span class="lab">CFG (Scale)</span><input type="number" id="f-scale" min="0" max="30" step="0.5"></label>
+              <label class="field"><span class="lab">Giới hạn mỗi lượt (Ảnh)</span><input type="number" id="f-max_per_round" min="1" max="6"></label>
+              <label class="field"><span class="lab">Timeout mỗi ảnh (Giây)</span><input type="number" id="f-timeout_sec" min="30" max="1800"></label>
             </div>
             <label class="field">
-              <span class="lab">Thời gian delay giữa 2 tấm (Mili-giây)</span>
+              <span class="lab">Khoảng thời gian nghỉ giữa 2 ảnh (Mili-giây)</span>
               <input type="number" id="f-interval_ms" min="0" max="60000" step="100">
-              <span class="hint">Né tình trạng spam click với bị bóp băng thông; Xài proxy chùa (Shared gateway) thì khuyên dùng 0～1000.</span>
+              <span class="hint">Dùng để tránh bị coi là click liên tục và tránh rate limit; Gateway dùng chung khuyên để từ 0~1000.</span>
             </label>
             <label class="field">
-              <span class="lab">Prompt phủ định (Negative Prompt)</span>
-              <textarea id="f-negative" rows="3" placeholder="Bỏ trống thì coi như không có"></textarea>
+              <span class="lab">Prompt tiêu cực</span>
+              <textarea id="f-negative" rows="3" placeholder="Để trống là không thêm từ tiêu cực"></textarea>
             </label>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Quy tắc kích hoạt</div><div class="card-desc">Điều kiện kích hoạt và luật xử lý (deduplication)</div></div></div>
+          <div class="card-head"><div><div class="card-title">Quy tắc kích hoạt</div><div class="card-desc">Điều kiện kích hoạt và Quy tắc loại bỏ trùng lặp</div></div></div>
           <div class="card-body">
             <div class="switch-row">
               <div class="sw" id="sw-swipe_regenerate" data-key="swipe_regenerate"></div>
               <div class="sr-text">
-                <div class="sr-lab">Cấp lại ảnh khi chuyển câu trả lời (swipe)</div>
-                <div class="sr-hint">Tắt cái này đi thì lúc quẹt qua câu trả lời khác sẽ dễ bị dính mấy tấm ảnh trớt quớt không ăn nhập gì với cốt truyện.</div>
+                <div class="sr-lab">Tạo lại ảnh khi swipe đổi câu trả lời</div>
+                <div class="sr-hint">Tắt đi, khi chuyển sang câu trả lời khác có thể bị sót lại hình minh họa không khớp với cốt truyện.</div>
               </div>
             </div>
             <div class="switch-row">
               <div class="sw" id="sw-strip_marker" data-key="strip_marker"></div>
               <div class="sr-text">
-                <div class="sr-lab">Loại bỏ tag trong chính văn</div>
-                <div class="sr-hint">Ảnh minh họa chỉ hiển thị cho đẹp bề ngoài thôi, không nhảy vào Context của AI để phá đám đâu, cũng không ăn mất Token. Tắt đi thì AI nó sẽ dòm thấy đống thẻ đánh dấu do chính nó nhả ra.</div>
+                <div class="sr-lab">Loại bỏ tag trong thân bài</div>
+                <div class="sr-hint">Hình minh họa chỉ đi qua tầng hiển thị, không đưa vào context của AI, không tốn Token. Nếu tắt đi, AI sẽ nhìn thấy thẻ tag mà mình vừa xuất ra.</div>
+              </div>
+            </div>
+            <div class="switch-row">
+              <div class="sw" id="sw-marker_redistribute" data-key="marker_redistribute"></div>
+              <div class="sr-text">
+                <div class="sr-lab">Tự động phân bổ lại khi đánh dấu bị dồn cục ở cuối bài</div>
+                <div class="sr-hint">
+                  Model thường hay viết <span class="mono">[ILLUST: ...]</span> vào đoạn cuối cùng của câu trả lời, hình minh họa thế là biến thành "File đính kèm" chứ không phải "Hình minh họa" nữa.
+                  Khi bật tính năng này, nếu plugin nhận diện được hình thái này thì sẽ phân bổ lại đánh dấu theo từng đoạn - <b>Nguyên văn không đổi một chữ nào</b>, chỉ đổi vị trí chèn ảnh minh họa xuống dưới đoạn nào thôi.
+                  Những đánh dấu vốn dĩ đã nằm rải rác trong thân bài thì sẽ không bị đụng tới.
+                </div>
               </div>
             </div>
             <label class="field" style="margin-top:14px">
-              <span class="lab">Loại tin nhắn bỏ qua</span>
+              <span class="lab">Loại tin nhắn bị bỏ qua</span>
               <input type="text" id="f-exclude_types" placeholder="impersonate">
-              <span class="hint">Ngăn cách bằng dấu phẩy. Mặc định cạch mặt <span class="mono">impersonate</span> (Tin nhắn nhại lời).</span>
+              <span class="hint">Phân cách bằng dấu phẩy. Mặc định bỏ qua <span class="mono">impersonate</span>.</span>
             </label>
           </div>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Bơm (Inject) prompt</div><div class="card-desc">Quy tắc định hướng ép AI phải nhả ra cái tag</div></div>
-            <button class="btn sm" id="btn-copy-rule">Copy Quy tắc</button>
+            <div><div class="card-title">Tiêm prompt</div><div class="card-desc">Quy tắc hướng dẫn AI xuất thẻ tag</div></div>
+            <button class="btn sm" id="btn-copy-rule">Copy quy tắc</button>
           </div>
           <div class="card-body">
             <div class="switch-row">
               <div class="sw" id="sw-inject_prompt" data-key="inject_prompt"></div>
               <div class="sr-text">
-                <div class="sr-lab">Tự động ném quy tắc ILLUST thẳng vào mặt model</div>
-                <div class="sr-hint">Hễ tắt đi là phải tự lụi hụi copy cái cục quy tắc ở dưới dán vào Worldbook hay Thẻ nhân vật đấy nhé.</div>
+                <div class="sr-lab">Tự động giao quy tắc ILLUST cho model</div>
+                <div class="sr-hint">Nếu tắt, bạn phải tự copy dán quy tắc bên dưới vào Thẻ nhân vật hoặc Worldbook.</div>
               </div>
             </div>
             <div class="grid c2" style="margin-top:14px">
               <label class="field" style="margin:0">
-                <span class="lab">Vị trí bơm (Inject position)</span>
+                <span class="lab">Vị trí tiêm quy tắc</span>
                 <select id="f-inject_position">
-                  <option value="in_chat">in_chat — Cắm thẳng vào trước câu trả lời (Đề xuất)</option>
-                  <option value="in_prompt">in_prompt — Sát nhập vào Main System Prompt</option>
+                  <option value="in_chat">in_chat — Chèn vào trước câu trả lời (Khuyên dùng)</option>
+                  <option value="in_prompt">in_prompt — Gộp vào system prompt chính</option>
                 </select>
               </label>
               <label class="field" style="margin:0">
-                <span class="lab">Độ sâu cắm chốt (Chỉ có tác dụng với in_chat)</span>
+                <span class="lab">Độ sâu chèn (Có tác dụng khi dùng in_chat)</span>
                 <input type="number" id="f-inject_depth" min="0" max="20">
               </label>
             </div>
             <div class="muted" style="margin-bottom:14px;font-size:12px;line-height:1.65">
-              Khi Template output bị Worldbook của Thẻ nhân vật xích cổ (Thường thấy ở mấy Thẻ nhân vật độ chế (Customized) hạng nặng), Worldbook hay có cái trò bơm nguyên một hệ thống format vào
-              <span class="mono">depth 0</span>, thế là cái quyền ưu tiên của nó sẽ đạp chết luôn quy tắc nằm trong Main System Prompt.
-              Gặp tình huống này thì phải chỉnh Vị trí bơm về <span class="mono">in_chat</span> với độ sâu là <span class="mono">0</span>,
-              để ép quy tắc này ngồi chung mâm với cái template kia. Nếu vẫn ngoan cố không có tác dụng, vui lòng tự giác dùng "Copy Quy tắc" rồi paste thẳng vào Worldbook của Thẻ nhân vật đó,
-              để biến thẻ đánh dấu thành một bộ phận trong hệ thống Output của nó luôn.
+              Khi template xuất bị ràng buộc ép buộc bởi Worldbook của Thẻ nhân vật (Thường thấy ở các Thẻ nhân vật được tùy chỉnh chuyên sâu), Worldbook thường tiêm nguyên một bộ quy phạm định dạng vào
+              <span class="mono">depth 0</span>, độ ưu tiên của nó cao hơn các quy tắc trong system prompt chính.
+              Lúc này nên chỉnh vị trí tiêm thành <span class="mono">in_chat</span> và độ sâu là <span class="mono">0</span>,
+              để quy tắc nằm cùng chỗ với template đó. Nếu vẫn không có tác dụng, hãy dùng "Copy quy tắc" để ghi quy tắc vào Worldbook của Thẻ nhân vật đó,
+              biến đánh dấu thành một phần của template xuất của nó.
             </div>
             <label class="field" style="margin-top:0">
               <span class="lab">Quy tắc hiện tại (Chỉ đọc)</span>
@@ -654,15 +1042,50 @@ input[type=number]{-moz-appearance:textfield}
 
         <div class="card">
           <div class="card-head">
-            <div><div class="card-title">Nâng cao</div><div class="card-desc">Chuẩn đoán (Diagnostics)</div></div>
+            <div><div class="card-title">Chữ ký key độc quyền của V-Site</div><div class="card-desc">Chỉ có tác dụng khi key bắt đầu bằng vcs_</div></div>
+          </div>
+          <div class="card-body">
+            <div class="muted" style="font-size:12.5px;line-height:1.8;margin-bottom:14px">
+              V-Site phát hành hai loại key: <b>Key thông dụng</b> (Không có tiền tố) client NAI nào cũng dùng được; <b>Key độc quyền</b>
+              (<span class="mono">vcs_</span> bắt đầu) bắt buộc phải đính kèm chữ ký theo request, nếu không V-Site sẽ ném 403 ngay lập tức, không fallback.
+              Plugin nhận diện được key độc quyền thì sẽ tự động tính toán chữ ký, hơn nữa <b>salt do trang cấp, tự động bám theo sau khi trang đổi salt</b> -
+              Cho nên hai mục bên dưới thường là không cần đụng tới.
+              Dùng NovelAI chính thức hoặc bất kỳ trạm trung chuyển bên thứ ba nào, nội dung của thẻ này hoàn toàn vô tác dụng.
+            </div>
+            <label class="field">
+              <span class="lab">Công tắc chữ ký</span>
+              <select id="f-sign_mode">
+                <option value="auto">auto (Khuyên dùng): Chỉ đính kèm chữ ký cho key độc quyền vcs_</option>
+                <option value="off">off: Không thêm chữ ký cho bất kỳ key nào (Dùng để fix lỗi)</option>
+                <option value="on">on: Thêm chữ ký cho mọi key (Dùng cho site tự host)</option>
+              </select>
+              <span class="hint">
+                Khi chọn <span class="mono">off</span>, ngay cả key độc quyền của bạn cũng sẽ bị V-Site từ chối - Chỉ dùng khi fix lỗi hoặc rollback.
+              </span>
+            </label>
+            <label class="field">
+              <span class="lab">Salt chữ ký độc quyền (Thường để trống)</span>
+              <input type="text" id="f-exclusive_salt" placeholder="Để trống là được: Plugin sẽ tự động hỏi trang xem salt hiện tại là gì">
+              <span class="hint">
+                Để trống = Trước khi xuất ảnh sẽ tự động xin salt hiện tại từ trang, trang đổi salt xong không cần update plugin.
+                Chỉ khi bạn <b>tự host V-Site và từng sửa exclusiveSalt</b>, hoặc phiên bản của trang quá cũ không lấy được salt, thì mới điền giá trị giống với trang đó vào đây.
+                Điền sai sẽ khiến chữ ký key độc quyền không qua được xác thực (Key thông dụng không bị ảnh hưởng).
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Nâng cao</div><div class="card-desc">Chẩn đoán</div></div>
             <button class="btn sm danger" id="btn-reset">Khôi phục mặc định</button>
           </div>
           <div class="card-body">
             <div class="switch-row">
               <div class="sw" id="sw-debug" data-key="debug"></div>
               <div class="sr-text">
-                <div class="sr-lab">Bật nhật ký console (Log detail)</div>
-                <div class="sr-hint">Bật lên, trình duyệt sẽ tuôn ra cả rổ log quá trình (process) có tiền tố <span class="mono">[V.Canvas]</span> ở màn hình Console.</div>
+                <div class="sr-lab">Log chi tiết trong Console</div>
+                <div class="sr-hint">Sau khi bật, console trình duyệt sẽ xuất ra các log quá trình có tiền tố <span class="mono">[V.Canvas]</span>.</div>
               </div>
             </div>
           </div>
@@ -677,14 +1100,14 @@ input[type=number]{-moz-appearance:textfield}
 
 <script>
 /* ─────────────────────────────────────────────────────────────
-   Bảng điều khiển này chỉ là cái Frontend (Vỏ): Toàn bộ thao tác Read/Write đều phải đẩy qua API __V_CANVAS_API__ trên trang SillyTavern để extension lõi lo.
-   Cái bảng điều khiển này có khi là iframe nhúng (window.parent), cũng có khi là mở ở tab mới (window.opener);
-   Cả hai trường hợp đều trỏ về chung một trang SillyTavern gốc. Moi mãi mà không thấy hàm này nghĩa là bảng điều khiển bị truất quyền kiểm soát,
-   Lúc này thì phơi nguyên cái mặt lỗi ra luôn, cấm được lặng lẽ giấu nhẹm đi (Silent degradation).
+   Bảng quản lý chỉ là front-end: Mọi thao tác đọc ghi đều thông qua __V_CANVAS_API__ trên trang SillyTavern để giao cho phần core của extension thực thi.
+   Bảng quản lý có thể được mở bằng iframe nhúng (window.parent), cũng có thể được mở bằng tab mới (window.opener);
+   Cả hai trường hợp đều trỏ về cùng một trang SillyTavern. Nếu không lấy được hàm này tức là bảng quản lý không có quyền điều khiển,
+   lúc này hiển thị thẳng trạng thái lỗi, không âm thầm giáng cấp (silent fallback).
    ───────────────────────────────────────────────────────────── */
 function resolveApi() {
-  try { if (window.parent && window.parent !== window && typeof window.parent.__V_CANVAS_API__ === 'function') return window.parent.__V_CANVAS_API__; } catch (e) { /* Lỗi Cross-domain thì bỏ qua */ }
-  try { if (window.opener && typeof window.opener.__V_CANVAS_API__ === 'function') return window.opener.__V_CANVAS_API__; } catch (e) { /* Lỗi Cross-domain thì bỏ qua */ }
+  try { if (window.parent && window.parent !== window && typeof window.parent.__V_CANVAS_API__ === 'function') return window.parent.__V_CANVAS_API__; } catch (e) { /* Bỏ qua cross-domain */ }
+  try { if (window.opener && typeof window.opener.__V_CANVAS_API__ === 'function') return window.opener.__V_CANVAS_API__; } catch (e) { /* Bỏ qua cross-domain */ }
   try { if (typeof window.__V_CANVAS_API__ === 'function') return window.__V_CANVAS_API__; } catch (e) { /* Bỏ qua */ }
   return undefined;
 }
@@ -695,14 +1118,14 @@ const READY = typeof API === 'function';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/* -- Xử lý (Parse) địa chỉ ảnh --
-   SillyTavern trả về địa chỉ là đường dẫn gốc (/user/images/…), nhưng trang panel này lại nằm tận
-   /scripts/extensions/third-party/<extension>/panel.html, xài đường dẫn tương đối (Relative path) là đi tong (bị parse vô luôn thư mục của extension).
-   Thế nên phải chơi trò bám lấy gốc (Root) của SillyTavern để rèn ra địa chỉ tuyệt đối, như vậy mới vớt vát được mấy cách viết tương đối lỡ lọt vào lịch sử. */
+/* ── Phân tích địa chỉ hình ảnh ──
+   Địa chỉ hình ảnh do SillyTavern trả về là đường dẫn gốc (/user/images/...), trong khi trang này nằm ở
+   /scripts/extensions/third-party/<extension>/panel.html, nếu viết tương đối sẽ bị phân tích vào thư mục extension.
+   Ở đây thống nhất phân tích thành địa chỉ tuyệt đối dựa theo thư mục gốc của SillyTavern, tương thích với cách viết tương đối có thể tồn tại trong lịch sử. */
 const APP_BASE = (() => {
-  try { if (window.parent && window.parent !== window && window.parent.location) return window.parent.location.href; } catch (e) { /* Lỗi Cross-domain thì bỏ qua */ }
-  try { if (window.opener && window.opener.location) return window.opener.location.href; } catch (e) { /* Lỗi Cross-domain thì bỏ qua */ }
-  return location.href.replace(/scripts\/extensions\/.*$/, '');   // Phao cứu sinh cuối cùng: Chặt sạch từ đoạn extension tính đi
+  try { if (window.parent && window.parent !== window && window.parent.location) return window.parent.location.href; } catch (e) { /* Bỏ qua cross-domain */ }
+  try { if (window.opener && window.opener.location) return window.opener.location.href; } catch (e) { /* Bỏ qua cross-domain */ }
+  return location.href.replace(/scripts\/extensions\/.*$/, '');   // Dự phòng (Fallback): Cắt bỏ phần extension từ đường dẫn của chính nó
 })();
 
 function imgUrl(u) {
@@ -712,15 +1135,15 @@ function imgUrl(u) {
   try { return new URL(s.replace(/^\.\//, ''), APP_BASE).href; } catch (e) { return s; }
 }
 
-// Khi tải hình ảnh thất bại phải có báo lỗi rõ mồn một đập vào mặt (Chứ không phải để nguyên một cục trắng trơn hay icon hỏng, không biết đường đâu mà mò)
+// Cung cấp phản hồi trực quan khi hình ảnh load thất bại (Thay vì để lại một khoảng trắng hoặc ảnh vỡ, khiến việc debug không có manh mối)
 function markImgErrors(root) {
   root.querySelectorAll('img').forEach(im => {
     const onErr = () => {
       const src = im.getAttribute('src') || '';
       const box = document.createElement('div');
       box.className = 'img-broken';
-      box.innerHTML = '<b>Hình ảnh thất bại không thể load</b><br>' +
-        '<a href="' + esc(src) + '" target="_blank" rel="noopener noreferrer">Mở cái đường link này ở một Tab mới xem thử (Để chẩn bệnh xem là do cái link tỏi rồi hay do mạng mẽo có vấn đề)</a><br>' +
+      box.innerHTML = '<b>Hình ảnh load thất bại</b><br>' +
+        '<a href="' + esc(src) + '" target="_blank" rel="noopener noreferrer">Mở địa chỉ này trong tab mới (Có thể dùng để phán đoán xem link đã die hay do vấn đề mạng local)</a><br>' +
         esc(src);
       im.replaceWith(box);
     };
@@ -729,23 +1152,23 @@ function markImgErrors(root) {
   });
 }
 
-// Xử lý chung các thẻ <img>: Hình ảnh lấy từ nguồn ngoài (Remote) thì phải tước quyền (Disable) Referer của nó -- Bởi vì cái cục CDN bên trên (cdn.qwenlm.ai) nó có gài bẫy chống hotlink (Anti-hotlinking),
-// vác cái Referer có mặt SillyTavern lên là nó quăng vào mặt cái 403 ngay, nó chỉ cho qua nếu "Không có Referer" hoặc là Referer phe nhà nó thôi.
-// Ảnh chèn trong đoạn chat hiển thị bình thường cũng chính là vì lý do đó (Khâu render bên SillyTavern đã chặn Referer lại); Ở bảng điều khiển lúc trước không gài, nên y như rằng là đi tong.
+// Tạo thẻ hình ảnh đồng nhất: Ảnh từ xa bắt buộc phải vô hiệu hóa Referer một cách rõ ràng - CDN tuyến trên (cdn.qwenlm.ai) có cơ chế chống trộm link (anti-hotlink),
+// request mang theo Referer địa chỉ SillyTavern nhất luật bị 403, chỉ cho qua "Không mang Referer" hoặc Referer từ chính site của nó.
+// Hình minh họa trong thân bài có thể hiển thị bình thường chính vì lý do này (Phía SillyTavern render không mang theo Referer); Trước đây bảng quản lý chưa thêm, nên chắc chắn bị vỡ ảnh.
 function imgTag(url, cls) {
   return '<img src="' + esc(url) + '"' + (cls ? ' class="' + cls + '"' : '') +
     ' referrerpolicy="no-referrer" alt="illustration">';
 }
 
-// Hình ảnh thu nhỏ (Thumbnails): Cả Remote với Local đều xài chung một bộ thuộc tính (attribute)
+// Hình ảnh trong thumbnail: Cả remote và local đều đi chung một bộ thuộc tính
 function thumbImg(url) {
   return imgTag(imgUrl(url));
 }
 
-// Link dẫn từ xa (Chưa ghi vào ổ cứng) có nguồn gốc từ link rác của tuyến trên, không có bảo hành ngày hết hạn; Trên bảng điều khiển phải xì nó ra cho rõ ràng.
+// Ảnh từ link từ xa (Chưa lưu xuống ổ cứng) đến từ link tạm thời của tuyến trên, có thể hết hạn bất cứ lúc nào; Đánh dấu rõ trên bảng quản lý.
 function isRemoteUrl(u) { return /^https?:/i.test(String(u ?? '').trim()); }
 function remoteTag(u) {
-  return isRemoteUrl(u) ? '<span class="tb-tag">Link từ xa · Chưa ghi đĩa</span>' : '';
+  return isRemoteUrl(u) ? '<span class="tb-tag">Link từ xa · Chưa lưu</span>' : '';
 }
 
 let SETTINGS = null;
@@ -760,19 +1183,19 @@ function toast(msg, kind = 'ok') {
 }
 
 async function call(action, payload) {
-  // Hàm bridge (Cầu nối) có khi lên thớt chậm hơn cả cái bảng (Độ trễ thời gian (Timing) khi load iframe nhúng), Mỗi lần hú nó thì phải moi nó ra lại.
+  // Cầu nối có thể gắn vào trễ hơn lúc load bảng quản lý (do độ trễ timing của iframe nhúng), mỗi lần gọi phân tích lại API.
   if (typeof API !== 'function') API = resolveApi();
-  if (typeof API !== 'function') return { ok: false, error: 'Chưa gắn kết được với trang SillyTavern: Vui lòng click "Mở bảng quản lý" ở ngăn kéo Extension' };
+  if (typeof API !== 'function') return { ok: false, error: 'Chưa kết nối đến trang SillyTavern: Vui lòng vào từ "Mở Bảng quản lý" trong ngăn kéo extension' };
   try {
     const r = await API(action, payload ?? null);
-    if (!r || typeof r !== 'object') return { ok: false, error: 'Extension nhả ra mớ dữ liệu lạ hoắc không parse được' };
+    if (!r || typeof r !== 'object') return { ok: false, error: 'Extension trả về dữ liệu không thể phân tích (parse)' };
     return r;
   } catch (e) {
     return { ok: false, error: String(e && e.message ? e.message : e) };
   }
 }
 
-/* -- Chuyển Tab -- */
+/* ── Chuyển trang ── */
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b === btn));
@@ -788,26 +1211,155 @@ function toggleSidebar(open) {
 }
 $('btn-menu').onclick = () => toggleSidebar(true);
 
-/* -- Giao diện Cài đặt -- */
-const TEXT_KEYS = ['base_url', 'api_key', 'model', 'negative', 'prompt_format', 'exclude_types', 'inject_position', 'ctx_url', 'ctx_key', 'ctx_model', 'ctx_style', 'ctx_quality', 'ctx_negative', 'jb_llm', 'jb_image'];
-const NUM_KEYS = ['width', 'height', 'steps', 'scale', 'max_per_round', 'timeout_sec', 'interval_ms', 'inject_depth', 'ctx_timeout_sec'];
-const BOOL_KEYS = ['enabled', 'swipe_regenerate', 'strip_marker', 'inject_prompt', 'debug', 'ctx_enabled', 'parallel'];
+/* ── Giao diện Cài đặt ── */
+const TEXT_KEYS = ['base_url', 'api_key', 'upstream_type', 'model', 'negative', 'prompt_format', 'exclude_types', 'inject_position', 'ctx_mode', 'ctx_direct_guide', 'ctx_direct_place', 'ctx_source', 'ctx_url', 'ctx_key', 'ctx_model', 'ctx_style', 'ctx_quality', 'ctx_negative', 'jb_llm', 'jb_image', 'active_artist', 'sign_mode', 'exclusive_salt', 'nsfw_base_url', 'nsfw_api_key', 'nsfw_model', 'nsfw_upstream_type', 'nsfw_prompt_format', 'nsfw_negative', 'nsfw_words', 'nsfw_prefix', 'nsfw_mix', 'nsfw_daily_place', 'nsfw_retry'];
+const NUM_KEYS = ['width', 'height', 'steps', 'scale', 'max_per_round', 'timeout_sec', 'interval_ms', 'inject_depth', 'ctx_timeout_sec', 'nsfw_max'];
+const BOOL_KEYS = ['enabled', 'swipe_regenerate', 'strip_marker', 'inject_prompt', 'debug', 'ctx_enabled', 'parallel', 'marker_redistribute', 'nsfw_enabled'];
 
 function fillForm(s) {
   SETTINGS = s;
+  // Tùy chọn của chuỗi họa sĩ bắt buộc phải build lại theo danh sách trước, rồi mới đến lượt gán value chung ở bên dưới -
+  // Nếu tùy chọn không tồn tại, trình duyệt sẽ xóa select.value thành chuỗi rỗng, trạng thái đang chọn sẽ bị mất.
+  renderArtistOptions(s.artist_presets, s.active_artist);
   for (const k of TEXT_KEYS) { const el = $('f-' + k); if (el) el.value = s[k] ?? ''; }
   for (const k of NUM_KEYS) { const el = $('f-' + k); if (el) el.value = s[k] ?? ''; }
   for (const k of BOOL_KEYS) { const el = $('sw-' + k); if (el) el.classList.toggle('on', !!s[k]); }
+  renderArtistRows(s.artist_presets);
+  syncCtxSourceUI();
+  syncCtxModeUI();
+  syncNsfwUI();
 }
 
-// Gửi đi (Submit) chung một form: Chỉ cần một mục đổi giá trị là ghi ngay (save), xả ra changed / notes
+// Khi kênh phân luồng đóng thì thu gọn toàn bộ các trường này lại: Để đó sẽ khiến người ta tưởng không điền thì không chạy được.
+function syncNsfwUI() {
+  const sw = $('sw-nsfw_enabled');
+  const box = $('nsfw-fields');
+  if (box) box.style.display = (sw && sw.classList.contains('on')) ? '' : 'none';
+}
+
+// Khi chọn "Xuất trực tiếp nguyên văn thân bài" thì toàn bộ thẻ Model phân tích không tham gia, thu gọn lại luôn -
+// Để đó sẽ khiến người ta tưởng phải cấu hình thêm một model phân tích thì mới xài được.
+function syncCtxModeUI() {
+  const sel = $('f-ctx_mode');
+  const card = $('card-analyzer');
+  if (card) card.style.display = (sel && sel.value === 'direct') ? 'none' : '';
+}
+
+// Khi chọn "Đi theo API chính của SillyTavern", 3 mục Địa chỉ / Key / Tên model không có hiệu lực, thu gọn lại luôn,
+// Tránh việc người dùng tưởng bắt buộc phải điền xong mới dùng được.
+function syncCtxSourceUI() {
+  const sel = $('f-ctx_source');
+  const box = $('ctx-custom-fields');
+  if (box) box.style.display = (sel && sel.value === 'custom') ? '' : 'none';
+}
+
+/* ── Chuỗi họa sĩ ──
+   Bảng quản lý chỉ chịu trách nhiệm render và submit: Việc validate nội dung, đánh giá hiệu lực (chỉ ghép vào khi gửi chuỗi thẻ) đều nằm ở lib/artist.js bên phía extension.
+   Toàn bộ danh sách được submit một lần qua artist.save, không thêm xóa từng dòng - Tránh xuất hiện trạng thái trung gian "xóa được một nửa",
+   đồng thời giúp nó né được settings.patch một cách tự nhiên (Nhờ vậy sẽ không bị "Khôi phục mặc định" xóa mất). */
+
+function artistPresets() {
+  return (SETTINGS && Array.isArray(SETTINGS.artist_presets)) ? SETTINGS.artist_presets : [];
+}
+
+function artistActiveId() {
+  return (SETTINGS && SETTINGS.active_artist) || '';
+}
+
+// Tùy chọn phải tạo ra trước rồi mới gán value: Khi tùy chọn không tồn tại trình duyệt sẽ xóa select.value thành chuỗi rỗng.
+function renderArtistOptions(presets, active) {
+  const sel = $('f-active_artist');
+  if (!sel) return;
+  const list = Array.isArray(presets) ? presets : [];
+  sel.innerHTML = '<option value="">Không sử dụng</option>' + list.map(a =>
+    '<option value="' + esc(a.id) + '">' + esc(a.name || ' (Chưa đặt tên) ') + '</option>').join('');
+  // id bị treo (Trỏ đến mục đã xóa) không tồn tại trong tùy chọn -> Lùi về chuỗi rỗng, hiển thị "Không sử dụng",
+  // Nhất quán với logic phán đoán bên phía extension (Xem artistPromptFor trong lib/artist.js).
+  sel.value = active || '';
+}
+
+function renderArtistRows(presets) {
+  const wrap = $('artist-list');
+  if (!wrap) return;
+  const list = Array.isArray(presets) ? presets : [];
+  if (!list.length) {
+    wrap.innerHTML = '<div class="empty">Chưa có chuỗi họa sĩ nào. Bấm "Thêm một mục" ở góc trên bên phải để tạo mới.</div>';
+    return;
+  }
+  wrap.innerHTML = list.map(a =>
+    '<div class="artist-item" data-id="' + esc(a.id) + '">' +
+      '<div class="artist-head">' +
+        '<input type="text" class="artist-name" value="' + esc(a.name) + '" placeholder="Đặt một cái tên, ví dụ: Tả thực / Celluloid">' +
+        '<button class="btn sm danger artist-del">Xóa</button>' +
+      '</div>' +
+      '<textarea class="artist-prompt" rows="3" placeholder="Thẻ họa sĩ tiếng Anh, phân cách bằng dấu phẩy tiếng Anh, có thể kèm trọng số. Ví dụ: 0.8::artist:yalmyu::, artist:sh_(shinh)">' + esc(a.prompt) + '</textarea>' +
+    '</div>').join('');
+}
+
+async function saveArtists(payload) {
+  const r = await call('artist.save', payload);
+  if (!r.ok) { toast('Lưu chuỗi họa sĩ thất bại: ' + (r.error || 'Lỗi không xác định'), 'bad'); return false; }
+  const d = r.data || {};
+  SETTINGS.artist_presets = d.list || [];
+  // Chỉ đồng bộ khi lần này thực sự có submit active_artist, tránh việc vô tình xóa mất thay đổi của trường khác.
+  if (payload.active_artist !== undefined) SETTINGS.active_artist = d.active_artist || '';
+  renderArtistOptions(SETTINGS.artist_presets, SETTINGS.active_artist);
+  renderArtistRows(SETTINGS.artist_presets);
+  toast('Chuỗi họa sĩ: Đã lưu và có hiệu lực');
+  return true;
+}
+
+// id này chỉ dùng để đối chiếu giữa bảng quản lý và extension; Phía extension chỉ validate "Khác rỗng + Không trùng lặp", không phân tích ý nghĩa của nó.
+function newArtistId() {
+  return 'art_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// Ủy quyền sự kiện (Event Delegation): Danh sách sẽ được render lại toàn bộ, bind listener cho từng dòng sẽ bị mất khi render lại.
+$('artist-list').addEventListener('change', async ev => {
+  if (!READY) return;
+  const item = ev.target.closest('.artist-item');
+  if (!item || !item.dataset.id) return;
+  const isName = ev.target.classList.contains('artist-name');
+  const isPrompt = ev.target.classList.contains('artist-prompt');
+  if (!isName && !isPrompt) return;
+  const list = artistPresets().map(a => ({ ...a }));
+  const hit = list.find(a => a.id === item.dataset.id);
+  if (!hit) return;
+  if (isName) hit.name = ev.target.value; else hit.prompt = ev.target.value;
+  await saveArtists({ list });
+});
+
+$('artist-list').addEventListener('click', async ev => {
+  const btn = ev.target.closest('.artist-del');
+  if (!btn || !READY) return;
+  const item = btn.closest('.artist-item');
+  const id = item && item.dataset.id;
+  if (!id) return;
+  const hit = artistPresets().find(a => a.id === id);
+  if (!window.confirm('Xóa chuỗi họa sĩ "' + ((hit && hit.name) || 'Chưa đặt tên') + '"?')) return;
+  const list = artistPresets().filter(a => a.id !== id);
+  const payload = { list };
+  // Nếu xóa trúng mục đang được dùng -> Cùng lúc làm rỗng luôn, nếu không sẽ để lại một id lơ lửng trỏ tới mục đã bị xóa.
+  if (artistActiveId() === id) payload.active_artist = '';
+  await saveArtists(payload);
+});
+
+$('btn-artist-add').onclick = async () => {
+  if (!READY) return;
+  const list = artistPresets().map(a => ({ ...a }));
+  if (list.length >= 30) { toast('Chuỗi họa sĩ tối đa 30 mục', 'bad'); return; }
+  list.push({ id: newArtistId(), name: 'Chuỗi họa sĩ ' + (list.length + 1), prompt: '' });
+  await saveArtists({ list });
+};
+
+// Submit đồng nhất: Một trường thay đổi là ghi ngay, trả về changed / notes
 async function commit(patch, label) {
   const r = await call('settings.patch', patch);
   if (!r.ok) { toast('Lưu thất bại: ' + (r.error || 'Lỗi không xác định'), 'bad'); return false; }
   if (r.data && r.data.settings) fillForm(r.data.settings);
   const changed = (r.data && r.data.changed) || [];
   const notes = (r.data && r.data.notes) || [];
-  if (changed.length) toast(label + ': Đã lưu và có hiệu lực (hot-reload)');
+  if (changed.length) toast(label + ': Đã lưu và có hiệu lực');
   if (notes.length) toast(notes.join('; '), 'bad');
   await refreshOverview();
   return true;
@@ -821,39 +1373,55 @@ NUM_KEYS.forEach(k => {
   const el = $('f-' + k);
   if (el) el.addEventListener('change', () => commit({ [k]: el.value }, 'Cài đặt'));
 });
+// Sau khi đổi phương thức bù ảnh thì lập tức thu gọn / mở rộng thẻ Model phân tích (Vòng lặp chung ở trên chỉ lo việc lưu)
+$('f-ctx_mode').addEventListener('change', () => syncCtxModeUI());
 BOOL_KEYS.forEach(k => {
   const el = $('sw-' + k);
   if (!el) return;
   el.onclick = () => {
     if (!READY) return;
     const next = !el.classList.contains('on');
-    el.classList.toggle('on', next);           // Nhả hiệu ứng trước, fail thì lật ngược về cũ (rollback)
+    el.classList.toggle('on', next);           // Phản hồi UI trước, thất bại thì rollback
+    if (k === 'nsfw_enabled') syncNsfwUI();
     commit({ [k]: next }, k === 'enabled' ? 'Công tắc tổng' : 'Cài đặt').then(ok => {
       if (!ok) el.classList.toggle('on', !next);
     });
   };
 });
 
-/* -- Tổng quan (Overview) -- */
+/* ── Khung nhập secret key: Mặc định ẩn, bấm "Hiển thị" mới lộ chữ rõ ──
+   Chỉ đổi type của input, value không bị ảnh hưởng, do đó hoàn toàn tương thích với logic lưu chung ở trên. */
+document.querySelectorAll('.secret-toggle').forEach(btn => {
+  btn.onclick = () => {
+    const input = document.getElementById(btn.dataset.secret || '');
+    if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.textContent = show ? 'Ẩn' : 'Hiển thị';
+    btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+  };
+});
+
+/* ── Tổng quan ── */
 function kvSet(id, text) { const el = $(id); if (el) el.textContent = text; }
 
 const PROMPT_FORMAT_LABEL = {
-  auto: 'auto (Nhìn địa chỉ mà tự xử)',
-  description: 'description (Mô tả bằng ngôn ngữ tự nhiên)',
-  tags: 'tags (Danbooru Tags)',
-  both: 'both (Combo cả Mô tả lẫn Tags)',
+  auto: 'auto (Tự động đoán theo địa chỉ)',
+  description: 'description (Mô tả ngôn ngữ tự nhiên)',
+  tags: 'tags (Thẻ Danbooru)',
+  both: 'both (Mô tả + Thẻ)',
 };
 
 async function refreshOverview() {
   const r = await call('state');
-  if (!r.ok) { kvSet('pill-text', 'Extension chưa nối cáp'); $('pill').className = 'pill off'; return; }
+  if (!r.ok) { kvSet('pill-text', 'Chưa kết nối extension'); $('pill').className = 'pill off'; return; }
   const d = r.data || {};
   STATE = d;
   const s = d.settings || {};
 
   const pill = $('pill');
-  if (d.enabled) { pill.className = 'pill'; kvSet('pill-text', 'Tự động vẽ hình đã bật'); }
-  else { pill.className = 'pill off'; kvSet('pill-text', 'Tự động vẽ hình bị tắt'); }
+  if (d.enabled) { pill.className = 'pill'; kvSet('pill-text', 'Tự động vẽ minh họa đã bật'); }
+  else { pill.className = 'pill off'; kvSet('pill-text', 'Tự động vẽ minh họa đã tắt'); }
   kvSet('foot-version', 'V.Canvas ' + (d.version || ''));
 
   const box = $('stat-enabled-box');
@@ -862,31 +1430,32 @@ async function refreshOverview() {
   kvSet('stat-upstream', d.upstreamKind || '-');
   kvSet('stat-images', String((d.images || []).length));
 
-  kvSet('ov-base', s.base_url || '(Chưa cấu hình)');
-  kvSet('ov-key', d.apiKeyMasked || '(Chưa cài đặt)');
-  kvSet('ov-model', s.model || '(Rỗng)');
+  kvSet('ov-base', s.base_url || ' (Chưa cấu hình) ');
+  kvSet('ov-key', d.apiKeyMasked || ' (Chưa thiết lập) ');
+  kvSet('ov-model', s.model || ' (Trống) ');
   kvSet('ov-params', `${s.width} × ${s.height} · ${s.steps} bước · CFG ${s.scale}`);
   kvSet('ov-prompt-format', PROMPT_FORMAT_LABEL[s.prompt_format] || s.prompt_format || '-');
-  kvSet('ov-max', (s.max_per_round || 0) + ' tấm');
+  kvSet('ov-max', (s.max_per_round || 0) + ' ảnh');
   kvSet('ov-inject', s.inject_prompt
-    ? 'Bật · ' + (s.inject_position === 'in_prompt' ? 'in_prompt' : `in_chat (độ sâu ${s.inject_depth})`)
+    ? 'Bật · ' + (s.inject_position === 'in_prompt' ? 'in_prompt' : `in_chat(depth ${s.inject_depth})`)
     : 'Tắt');
-  kvSet('ov-ctx', s.ctx_enabled ? 'Bật · ' + (s.ctx_model || 'Chưa điền tên model') : 'Tắt');
+  kvSet('ov-ctx', s.ctx_enabled ? 'Bật · ' + (d.ctxActiveLabel || '-') : 'Tắt');
+  kvSet('ctx-active', d.ctxActiveLabel || '-');
   kvSet('ov-strip', s.strip_marker ? 'Bật' : 'Tắt');
   kvSet('ov-swipe', s.swipe_regenerate ? 'Bật' : 'Tắt');
-  kvSet('ov-exclude', s.exclude_types || '(Không có)');
+  kvSet('ov-exclude', s.exclude_types || ' (Không có) ');
 
   const imgs = d.images || [];
   const wrap = $('thumbs-wrap');
   if (!imgs.length) {
-    wrap.innerHTML = '<div class="empty">Chưa có tấm ảnh nào được vẽ trong phiên làm việc này.<br>Mỗi khi AI nó nhả câu trả lời có cài cắm tag thì thành phẩm sẽ tụ tập hết ở đây.</div>';
+    wrap.innerHTML = '<div class="empty">Phiên này chưa tạo hình minh họa nào.<br>Khi AI xuất câu trả lời chứa tag, kết quả sẽ hiển thị ở đây.</div>';
   } else {
     wrap.innerHTML = '<div class="thumbs">' + imgs.map(it =>
       '<div class="thumb">' +
         '<a href="' + esc(imgUrl(it.url)) + '" target="_blank" rel="noopener noreferrer">' +
           thumbImg(it.url) +
         '</a>' +
-        '<div class="tb-meta"><b>Dòng ' + esc(it.messageId) + '</b> · Tấm thứ ' + esc(it.index + 1) + remoteTag(it.url) + '<br>' +
+        '<div class="tb-meta"><b>Câu thứ ' + esc(it.messageId) + '</b> · Ảnh thứ ' + esc(it.index + 1) + ' ' + remoteTag(it.url) + '<br>' +
         esc((it.prompt || '').slice(0, 60)) + '</div>' +
       '</div>').join('') + '</div>';
     markImgErrors(wrap);
@@ -895,7 +1464,7 @@ async function refreshOverview() {
 
 $('btn-refresh-overview').onclick = async () => { await refreshOverview(); toast('Đã làm mới'); };
 
-/* -- Lịch sử sinh ảnh -- */
+/* ── Lịch sử tạo ảnh ── */
 function fmtTime(t) {
   if (!t) return '-';
   const d = new Date(t);
@@ -908,14 +1477,14 @@ async function refreshHistory() {
   if (!wrap) return;
   const r = await call('history.list');
   if (!r.ok) {
-    kvSet('history-count', 'Load thất bại');
+    kvSet('history-count', 'Đọc thất bại');
     wrap.innerHTML = '<div class="err">' + esc(r.error || 'Lỗi không xác định') + '</div>';
     return;
   }
   const list = (r.data && r.data.history) || [];
-  kvSet('history-count', list.length ? 'Tổng cộng ' + list.length + ' dòng' : 'Tạm thời chưa có gì');
+  kvSet('history-count', list.length ? 'Tổng cộng ' + list.length + ' mục' : 'Chưa có lịch sử');
   if (!list.length) {
-    wrap.innerHTML = '<div class="empty">Gia tài chưa có một bức ảnh minh họa nào cả.<br>Mỗi khi sinh ảnh thành công thì nó sẽ tự động chui vào trong này nằm.</div>';
+    wrap.innerHTML = '<div class="empty">Chưa tạo hình minh họa nào.<br>Sau khi xuất ảnh thành công sẽ tự động ghi lại ở đây.</div>';
     return;
   }
   wrap.innerHTML = '<div class="thumbs">' + list.map(it =>
@@ -932,14 +1501,14 @@ async function refreshHistory() {
 
 $('btn-history-refresh').onclick = async () => { await refreshHistory(); toast('Đã làm mới'); };
 $('btn-history-clear').onclick = async () => {
-  if (!window.confirm('Quét sạch toàn bộ lịch sử? Các file ảnh đã được nện xuống ổ đĩa vẫn an toàn, ở đây chỉ xóa sổ cái danh sách này thôi.')) return;
+  if (!window.confirm('Xóa toàn bộ lịch sử tạo ảnh? Các file ảnh đã lưu trên ổ cứng sẽ không bị ảnh hưởng, chỉ gỡ bỏ các mục hiển thị ở đây.')) return;
   const r = await call('history.clear');
-  if (!r.ok) { toast('Dọn dẹp thất bại: ' + (r.error || ''), 'bad'); return; }
+  if (!r.ok) { toast('Xóa thất bại: ' + (r.error || ''), 'bad'); return; }
   await refreshHistory();
-  toast('Đã dọn dẹp sạch sẽ');
+  toast('Đã xóa');
 };
 
-/* -- Xuất ảnh từ bản dịch -- */
+/* ── Dịch thuật xuất ảnh ── */
 let TR_BUSY = false;
 
 function renderTranslateResult(d) {
@@ -947,11 +1516,11 @@ function renderTranslateResult(d) {
   $('tr-result').innerHTML =
     '<div class="tr-preview">' + imgTag(url) + '</div>' +
     '<label class="field" style="margin-top:14px">' +
-      '<span class="lab">Prompt thực tế ném lên cho tuyến trên</span>' +
+      '<span class="lab">Prompt thực tế gửi lên tuyến trên</span>' +
       '<textarea id="tr-prompt" rows="6" readonly></textarea>' +
     '</label>' +
     '<div class="row" style="margin-top:10px">' +
-      '<a class="btn sm" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Mở sang tab mới để coi</a>' +
+      '<a class="btn sm" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Mở trong tab mới</a>' +
     '</div>';
   $('tr-prompt').value = d.prompt || '';
   markImgErrors($('tr-result'));
@@ -960,50 +1529,50 @@ function renderTranslateResult(d) {
 $('btn-tr-gen').onclick = async () => {
   if (TR_BUSY) return;
   const text = $('tr-text').value.trim();
-  if (!text) { toast('Nhập mô tả vào đi chứ', 'bad'); return; }
+  if (!text) { toast('Vui lòng nhập mô tả', 'bad'); return; }
   const btn = $('btn-tr-gen');
   TR_BUSY = true;
   btn.disabled = true;
   const old = btn.textContent;
-  btn.textContent = 'Đang nhào nặn... (Dịch thuật + Vẽ hình, Tầm 30~90s)';
+  btn.textContent = 'Đang tạo... (Mở rộng + Xuất ảnh, khoảng 30~90 giây)';
   $('tr-err').textContent = '';
   const r = await call('translate.generate', { text, sizeMode: $('tr-size-mode').value });
   TR_BUSY = false;
   btn.disabled = false;
   btn.textContent = old;
   if (!r.ok) {
-    $('tr-err').textContent = r.error || 'Lỗi lạ';
-    toast('Gãy giữa chừng', 'bad');
+    $('tr-err').textContent = r.error || 'Lỗi không xác định';
+    toast('Dịch thuật xuất ảnh thất bại', 'bad');
     return;
   }
   renderTranslateResult(r.data || {});
-  toast('Xong xuôi');
+  toast('Hoàn tất');
 };
 
 $('btn-tr-copy').onclick = async () => {
   const el = $('tr-prompt');
-  if (!el || !el.value) { toast('Không có prompt nào để copy cả', 'bad'); return; }
-  try { await navigator.clipboard.writeText(el.value); toast('Prompt đã nằm trong Clipboard'); }
+  if (!el || !el.value) { toast('Chưa có prompt nào để copy', 'bad'); return; }
+  try { await navigator.clipboard.writeText(el.value); toast('Đã copy prompt vào clipboard'); }
   catch {
     el.select();
-    try { document.execCommand('copy'); toast('Prompt đã nằm trong Clipboard'); }
-    catch { toast('Copy hụt rồi, xin phiền bôi đen rồi bấm Ctrl+C đi nhé', 'bad'); }
+    try { document.execCommand('copy'); toast('Đã copy prompt vào clipboard'); }
+    catch { toast('Copy thất bại, vui lòng bôi đen thủ công nội dung trong ô text', 'bad'); }
   }
 };
 
-/* -- Xuất ảnh từ ngữ cảnh -- */
+/* ── Xuất ảnh theo context ── */
 $('btn-ctx-test').onclick = async () => {
   const btn = $('btn-ctx-test');
   btn.disabled = true;
-  $('ctx-test-err').textContent = 'Đang dò đường...';
+  $('ctx-test-err').textContent = 'Đang kết nối...';
   const r = await call('ctx.test');
   btn.disabled = false;
   if (r.ok) {
     $('ctx-test-err').textContent = '';
-    toast('Đường mạng trơn tru: ' + ((r.data && r.data.message) || ''));
+    toast('Kết nối bình thường: ' + ((r.data && r.data.message) || ''));
   } else {
-    $('ctx-test-err').textContent = r.error || 'Lỗi kì lạ';
-    toast('Dò đường thất bại', 'bad');
+    $('ctx-test-err').textContent = r.error || 'Lỗi không xác định';
+    toast('Kiểm tra kết nối thất bại', 'bad');
   }
 };
 
@@ -1014,64 +1583,84 @@ $('btn-ctx-gen').onclick = async () => {
   CTX_BUSY = true;
   btn.disabled = true;
   const old = btn.textContent;
-  btn.textContent = 'Đang tiêu hóa... (Phân tích + Vẽ hình, khoảng 30~120s)';
-  $('ctx-result').innerHTML = '<div class="empty">Đang rã đông (Phân tích) câu trả lời cuối cùng của nhân vật...</div>';
+  btn.textContent = 'Đang xử lý... (Phân tích + Xuất ảnh, khoảng 30~120 giây)';
+  $('ctx-result').innerHTML = '<div class="empty">Đang phân tích câu trả lời cuối cùng của nhân vật...</div>';
   const r = await call('ctx.generate');
   CTX_BUSY = false;
   btn.disabled = false;
   btn.textContent = old;
   if (!r.ok) {
-    $('ctx-result').innerHTML = '<div class="err">' + esc(r.error || 'Lỗi khó hiểu') + '</div>';
-    toast('Xuất ảnh từ ngữ cảnh sụp hầm', 'bad');
+    $('ctx-result').innerHTML = '<div class="err">' + esc(r.error || 'Lỗi không xác định') + '</div>';
+    toast('Xuất ảnh theo context thất bại', 'bad');
     return;
   }
   const d = r.data || {};
-  const list = (d.prompts || []).map((p, i) => '<div class="kv"><span class="k">Prompt của tấm thứ ' + (i + 1) + '</span><span class="v">' + esc(p) + '</span></div>').join('');
+  const list = (d.prompts || []).map((p, i) => '<div class="kv"><span class="k">Prompt của ảnh thứ ' + (i + 1) + '</span><span class="v">' + esc(p) + '</span></div>').join('');
   $('ctx-result').innerHTML =
-    '<div class="muted" style="font-size:12.5px;line-height:1.7">Đã chèn tại chỗ (in-place) ' + esc(d.count) + ' tấm ảnh minh họa vào bên trong dòng ' + esc(d.messageId) + ' của đoạn chat.</div>' +
+    '<div class="muted" style="font-size:12.5px;line-height:1.7">Đã chèn tại chỗ ' + esc(d.count) + ' ảnh minh họa vào câu trả lời thứ ' + esc(d.messageId) + ' trong cuộc trò chuyện.</div>' +
     (list || '');
-  toast('Đã nhét vào ' + d.count + ' bức ảnh minh họa');
+  toast('Đã chèn ' + d.count + ' ảnh minh họa');
   await refreshOverview();
 };
 
 $('btn-ctx-reload').onclick = async () => { await loadAll(); toast('Đã tải lại'); };
 $('btn-prompt-reload').onclick = async () => { await loadAll(); toast('Đã tải lại'); };
 
-/* -- Test kết nối / Copy quy tắc / Khôi phục Default / Load lại -- */
+/* ── Kiểm tra kết nối / Copy quy tắc / Khôi phục mặc định / Tải lại ── */
 $('btn-test').onclick = async () => {
   const btn = $('btn-test');
   btn.disabled = true;
-  $('test-err').textContent = 'Đang bắt tay...';
+  $('test-err').textContent = 'Đang kết nối...';
   const r = await call('test');
   btn.disabled = false;
   if (r.ok) {
     $('test-err').textContent = '';
-    toast('Thông đường: ' + (r.data && r.data.message ? r.data.message : ''));
+    toast('Kết nối bình thường: ' + (r.data && r.data.message ? r.data.message : ''));
   } else {
-    $('test-err').textContent = (r.error || 'Gãy kết nối') +
-      '　—　Lưu ý: Một vài cái NAI Gateway nó gác cổng gắt gao chỉ nhả mỗi luồng Vẽ hình, chặn tiệt đường ống check Subcription (Gói cước); Chỗ này bị Fail chưa chắc là cổng này không ăn thua đâu, cứ xuất ảnh mà thấy ra là xài được tuốt.';
-    toast('Kết nối rụng', 'bad');
+    $('test-err').textContent = (r.error || 'Lỗi không xác định') +
+      ' - Lưu ý: Một số Gateway NAI chỉ cho phép endpoint xuất ảnh, các endpoint thông tin tài khoản bị chặn; Lỗi ở đây không có nghĩa là service không dùng được, vui lòng dựa vào việc có xuất được ảnh thực tế hay không làm chuẩn.';
+    toast('Kiểm tra kết nối thất bại', 'bad');
+  }
+};
+
+$('btn-nsfw-test').onclick = async () => {
+  const btn = $('btn-nsfw-test');
+  btn.disabled = true;
+  $('nsfw-test-err').textContent = 'Đang kết nối...';
+  // Trong form có thể chưa lưu, gửi luôn giá trị hiện tại đi, test chính là cái bản đang điền trước mắt này.
+  const r = await call('nsfw.test', {
+    base_url: $('f-nsfw_base_url').value,
+    api_key: $('f-nsfw_api_key').value,
+  });
+  btn.disabled = false;
+  if (r.ok) {
+    $('nsfw-test-err').textContent = '';
+    toast('Kết nối kênh phân luồng bình thường: ' + (r.data && r.data.message ? r.data.message : ''));
+  } else {
+    $('nsfw-test-err').textContent = (r.error || 'Lỗi không xác định') +
+      ' - Lưu ý: Một số Gateway NAI chỉ cho phép endpoint xuất ảnh, các endpoint thông tin tài khoản bị chặn; Lỗi ở đây không có nghĩa là service không dùng được, vui lòng dựa vào việc có xuất được ảnh thực tế hay không làm chuẩn.';
+    toast('Kiểm tra kênh phân luồng thất bại', 'bad');
   }
 };
 
 $('btn-copy-rule').onclick = async () => {
   const text = $('f-rule').value || '';
-  try { await navigator.clipboard.writeText(text); toast('Quy tắc đã yên vị trong Clipboard'); }
+  try { await navigator.clipboard.writeText(text); toast('Đã copy quy tắc vào clipboard'); }
   catch {
     $('f-rule').select();
-    try { document.execCommand('copy'); toast('Quy tắc đã yên vị trong Clipboard'); }
-    catch { toast('Copy tịt ngòi, xin phiền bôi đen rồi bấm Ctrl+C đi nhé', 'bad'); }
+    try { document.execCommand('copy'); toast('Đã copy quy tắc vào clipboard'); }
+    catch { toast('Copy thất bại, vui lòng bôi đen thủ công nội dung trong ô text', 'bad'); }
   }
 };
 
 $('btn-reset').onclick = async () => {
-  if (!window.confirm('Chắc chắn muốn xóa bàn làm lại về mặc định xuất xưởng chứ? Toàn bộ các thông số cấu hình mồ hôi nước mắt bây giờ sẽ bị reset sạch (Tất nhiên là mấy bức tranh nãy giờ vẽ ở ngoài chat thì không bị bốc hơi đâu).')) return;
+  if (!window.confirm('Khôi phục mặc định ban đầu? Toàn bộ cài đặt hiện tại sẽ bị ghi đè (Hình đã tạo trong chat không bị ảnh hưởng).')) return;
   const r = await call('settings.reset');
-  if (!r.ok) { toast('Reset hụt: ' + (r.error || ''), 'bad'); return; }
+  if (!r.ok) { toast('Khôi phục thất bại: ' + (r.error || ''), 'bad'); return; }
   fillForm(r.data.settings);
   await refreshRule();
   await refreshOverview();
-  toast('Đã tẩy trắng về mặc định');
+  toast('Đã khôi phục giá trị mặc định');
 };
 
 $('btn-reload-settings').onclick = async () => { await loadAll(); toast('Đã tải lại'); };
@@ -1083,15 +1672,15 @@ async function refreshRule() {
 
 async function loadAll() {
   const r = await call('settings.get');
-  if (!r.ok) { toast('Đọc cấu hình (Setting) fail: ' + (r.error || ''), 'bad'); return; }
+  if (!r.ok) { toast('Đọc cài đặt thất bại: ' + (r.error || ''), 'bad'); return; }
   fillForm(r.data.settings);
   await refreshRule();
   await refreshOverview();
 }
 
-/* -- Tự động boot -- */
+/* ── Khởi động ── */
 (async function boot() {
-  // Cầu nối API (Bridge API) đôi khi lề mề cóng hơn cả cái trang Panel: Ráng đợi một xíu rồi thử chọt lại thêm mấy lần nữa cho đỡ hiểu lầm là nó "Không kết nối được".
+  // Cầu nối có thể gắn vào trễ hơn lúc load bảng quản lý: Chờ một lát rồi thử lại, tránh báo nhầm "Chưa kết nối".
   for (let i = 0; i < 10 && typeof API !== 'function'; i++) {
     await new Promise(r => setTimeout(r, 200));
     API = resolveApi();
@@ -1099,15 +1688,15 @@ async function loadAll() {
   if (typeof API !== 'function') {
     $('bridge-warn').classList.add('show');
     $('pill').className = 'pill off';
-    kvSet('pill-text', 'Extension chưa nối cáp');
+    kvSet('pill-text', 'Chưa kết nối extension');
     document.querySelectorAll('.sw').forEach(el => el.classList.add('dis'));
-    // Ép khóa (Disable) luôn mấy cái control chuyên đi ghi đè dữ liệu, mấy cái tab menu lân la bên hông thì chừa lại để dòm
+    // Chỉ disable các control thực sự ghi dữ liệu, thanh điều hướng bên cạnh vẫn cho phép dùng
     document.querySelectorAll('.content input, .content textarea, .content .btn').forEach(el => { el.disabled = true; });
-    $('thumbs-wrap').innerHTML = '<div class="empty">Bảng điều khiển không có thực quyền trong tay, đành móm mỏ không lấy nổi thông số.</div>';
+    $('thumbs-wrap').innerHTML = '<div class="empty">Bảng quản lý không có quyền điều khiển, không thể đọc dữ liệu.</div>';
     return;
   }
   await loadAll();
-  // Khung cảnh hội thoại (Context) diễn biến không ngừng lúc mở bảng, nên cái trang Tổng quan phải được refesh định kỳ (Chỉ read-only thôi)
+  // Trong lúc bảng quản lý mở, cuộc trò chuyện liên tục thay đổi, định kỳ đồng bộ tổng quan (Chỉ đọc)
   setInterval(refreshOverview, 8000);
 })();
 </script>

@@ -1,18 +1,18 @@
 /* V.Canvas · Style
  *
- * Gồm 6 phần:
- *   1) Yêu cầu cứng: Ảnh minh họa trong tin nhắn phải đứng một mình một dòng, xếp dọc;
- *   2) Placeholder tại chỗ trong lúc đang vẽ;
- *   3) Thẻ tiến độ xuất ảnh lơ lửng (Trạng thái thường trú trong lúc phân tích / vẽ, có nút Chấm dứt);
- *   4) Overlay prompt của ảnh minh họa (Click vào ảnh để xem nội dung thẻ đánh dấu tương ứng của ảnh đó);
- *   5) Ngăn kéo extension (Cực kỳ tối giản);
- *   6) Overlay bảng điều khiển quản lý.
+ * Sáu phần:
+ *   1) Yêu cầu cứng: Hình minh họa trong tin nhắn phải chiếm trọn một dòng, sắp xếp theo chiều dọc;
+ *   2) Placeholder tại chỗ trong quá trình vẽ;
+ *   3) Thẻ tiến độ xuất ảnh lơ lửng (Cửa sổ trạng thái thường trú trong quá trình phân tích / vẽ, kèm nút dừng);
+ *   4) Overlay prompt hình minh họa (Click vào hình minh họa để xem nội dung marker tương ứng của ảnh đó);
+ *   5) Ngăn kéo extension (Tối giản);
+ *   6) Overlay bảng quản lý.
  *
- * Chú ý: Bảng điều khiển quản lý không đi theo theme của SillyTavern, bảng điều khiển có sẵn trọn bộ style màu tối riêng (Xem inline CSS trong panel.html),
- *       ở đây chỉ chịu trách nhiệm lớp vỏ overlay bên ngoài.
+ * Lưu ý: Bảng quản lý không đi theo theme của SillyTavern, bảng quản lý đi kèm một bộ style giao diện tối hoàn chỉnh (xem CSS inline trong panel.html),
+ *       ở đây chỉ chịu trách nhiệm cho lớp vỏ overlay.
  */
 
-/* -- 1. Ảnh minh họa trong chính văn: Đứng một mình một dòng (Hạng mục nghiệm thu: Chữ -> Ảnh -> Chữ xếp dọc, không trôi dạt (float), chữ không bao quanh ảnh) -- */
+/* -- 1. Hình minh họa thân bài: Chiếm trọn một dòng (Hạng mục nghiệm thu: Chữ -> Hình -> Chữ xếp dọc, không trôi (float), không bọc chữ (wrap)) -- */
 .mes_text img {
     display: block;
     max-width: 100%;
@@ -20,14 +20,14 @@
     margin: 8px auto;
 }
 
-/* Bổ sung bo góc cho ảnh minh họa do chính extension chèn vào */
+/* Bổ sung bo góc cho hình minh họa do chính extension chèn vào */
 .mes_text p > img {
     border-radius: 6px;
 }
 
-/* -- 2. Placeholder tại chỗ trong lúc đang vẽ --
-   Thay thế tại chỗ tag ILLUST trong chính văn bằng dòng nhắc nhở này. Chỉ sửa đổi DOM, không ghi đĩa (persist),
-   nhờ vậy nếu tải lại trang hoặc thất bại thì chữ "Đang vẽ" sẽ không bị lưu lại trong lịch sử trò chuyện. */
+/* -- 2. Placeholder tại chỗ trong quá trình vẽ --
+   Thay thế trực tiếp tag ILLUST trong thân bài bằng thông báo này. Chỉ sửa đổi DOM, không ghi xuống đĩa,
+   do đó sau khi tải lại hoặc thất bại, trong lịch sử trò chuyện sẽ không bị sót lại đoạn text "Đang vẽ...". */
 .v_canvas_placeholder {
     display: block;
     margin: 8px 0;
@@ -46,8 +46,8 @@
 }
 
 /* -- 3. Thẻ tiến độ xuất ảnh lơ lửng --
-   Thường trú trong lúc phân tích / vẽ, hiển thị giai đoạn hiện tại và kèm theo nút "Chấm dứt".
-   Chỉ nằm trên DOM, không ghi vào lịch sử trò chuyện; Đi theo biến theme của SillyTavern. */
+   Thường trú trong quá trình phân tích / vẽ, hiển thị giai đoạn hiện tại và kèm theo nút "Dừng".
+   Chỉ trên DOM, không ghi vào lịch sử trò chuyện; đi theo các biến theme của SillyTavern. */
 #v_canvas_progress {
     position: fixed;
     top: 64px;
@@ -112,7 +112,7 @@
     flex: none;
 }
 
-/* Đang diễn ra: Hiển thị chấm tròn nhấp nháy trước tiêu đề */
+/* Đang tiến hành: Trước tiêu đề hiển thị dấu chấm tròn đập nhịp (pulse) */
 #v_canvas_progress:not(.v_canvas_pg_done):not(.v_canvas_pg_err) .v_canvas_pg_title::before {
     content: "";
     display: inline-block;
@@ -151,8 +151,8 @@
     #v_canvas_progress .v_canvas_pg_mark { display: none; }
 }
 
-/* -- 4. Overlay prompt của ảnh minh họa --
-   Khởi tạo on-demand khi click vào ảnh minh họa, đóng xong xóa luôn; Không ghi vào lịch sử trò chuyện, không tham gia vào luồng render. */
+/* -- 4. Overlay prompt hình minh họa --
+   Được tạo theo nhu cầu khi click vào hình minh họa, đóng lại sẽ bị gỡ bỏ; không ghi vào lịch sử trò chuyện, không tham gia vào luồng render. */
 #v_canvas_prompt_overlay {
     position: fixed;
     inset: 0;
@@ -227,7 +227,7 @@
     opacity: 0.55;
 }
 
-/* -- 5. Ngăn kéo extension (Chỉ chứa tên + phiên bản + một nút bấm) -- */
+/* -- 5. Ngăn kéo extension (Chỉ có tên + phiên bản + một nút bấm) -- */
 #v_canvas_drawer .v_canvas_version {
     font-size: 11px;
     color: var(--SmartThemeBodyColor);
@@ -255,7 +255,7 @@
     justify-content: center;
 }
 
-/* -- 6. Overlay bảng điều khiển quản lý -- */
+/* -- 6. Overlay bảng quản lý -- */
 #v_canvas_panel_overlay {
     --vc-pad: 18px;
     --vc-chrome: 30px;
@@ -264,16 +264,16 @@
     top: 0;
     left: 0;
     width: 100%;
-    /* Không thể dùng offset top/bottom hay chiều cao %: SillyTavern trên Mobile đã set thẻ body thành position: fixed,
-       trong Android Chromium, cả hai thông số này sẽ bị dịch thành chiều cao = 0, làm overlay bị bẹp dí, không thấy nội dung panel.
-       Dùng 100vh kết hợp giá trị pixel lấy bằng JS thì Mobile hay Desktop gì cũng lấy được chiều cao trọn màn hình. */
+    /* Không thể dùng top/bottom offset hoặc chiều cao phần trăm: SillyTavern trên mobile set body là position: fixed,
+       hai thuộc tính này trên Chromium Android sẽ bị parse thành chiều cao 0, overlay bị ép bẹp, nội dung bảng quản lý không nhìn thấy được.
+       100vh và giá trị pixel gán bằng JS đều có thể lấy được chiều cao full màn hình trên cả mobile và desktop. */
     height: 100vh;
     z-index: 9999;
     background: rgba(0, 0, 0, 0.78);
     box-sizing: border-box;
 }
 
-/* Màn hình hẹp (Mobile): Overlay full màn hình, chỉ chừa lại 1 thanh thao tác */
+/* Màn hình hẹp (Điện thoại): Overlay full màn hình, chỉ giữ lại một thanh thao tác */
 @media (max-width: 720px) {
     #v_canvas_panel_overlay {
         --vc-pad: 0px;
@@ -332,17 +332,17 @@
     position: absolute;
     top: calc(var(--vc-chrome) + var(--vc-gap));
     left: var(--vc-pad);
-    /* iframe là một replaced element: width/height đặt là auto nó sẽ lùi về kích thước nội tại (intrinsic size) là 300x150,
-       kéo theo việc offset trái phải cũng bị vô hiệu, cho nên ở đây phải tự tính ra kích thước cụ thể. */
+    /* iframe là replaced element: width/height lấy auto sẽ lùi về kích thước nội tại 300x150,
+       offset trái phải theo đó cũng mất tác dụng, do đó ở đây phải tính toán kích thước một cách rõ ràng. */
     width: calc(100% - var(--vc-pad) * 2);
     height: calc(100% - var(--vc-chrome) - var(--vc-gap) - var(--vc-pad));
     border: none;
     border-radius: 12px;
-    background: #0f172a;          /* Màu nền riêng của bảng điều khiển, tránh bị chớp trắng màn hình (white flash) ở khoảnh khắc load */
+    background: #0f172a;          /* Màu nền của chính bảng quản lý, tránh việc chớp màn hình trắng lúc mới load */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
 }
 
-/* Gợi ý dự phòng (fallback) khi nhúng thất bại (Một số trình duyệt mobile và WebView trong app cấm iframe) */
+/* Thông báo dự phòng khi nhúng load thất bại (Một số trình duyệt mobile và WebView trong ứng dụng cấm iframe) */
 #v_canvas_panel_overlay #v_canvas_panel_fallback {
     display: none;
     position: absolute;
